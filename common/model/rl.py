@@ -71,12 +71,12 @@ class Agent:
             if correct:
                 loss *= 1
             loss.backward()
-        else:
-            loss = nn.CrossEntropyLoss()
-            labels = torch.stack(list(episode_history[:, 4])).double().view(-1, 2)
-            targets = torch.LongTensor(global_target).view(-1)
-            output = loss(labels, targets)
-            output.backward()
+        # else:
+        #     loss = nn.CrossEntropyLoss()
+        #     labels = torch.stack(list(episode_history[:, 4])).double().view(-1, 2)
+        #     targets = torch.LongTensor(global_target).view(-1)
+        #     output = loss(labels, targets)
+        #     output.backward()
 
         self.policy_optimizer.step()
         if torch.isnan(torch.sum(self.policy_network.layer1.weight)):
@@ -132,9 +132,9 @@ class Environment:
 
         if is_done:
             if self.action_seq == self.target:
-                reward = 10
+                reward = 1
             else:
-                reward = -1
+                reward = -0.5
 
         return self.state, reward, is_done
 
@@ -195,7 +195,7 @@ if __name__ == '__main__':
     #     raw_dataset = json.load(file_hanlder)
     #     corpus = [[item['corrected_question'], item['annotation']] for item in raw_dataset]
 
-    lr = 0.001
+    lr = 0.0001
     # word_vectorizer = OneHotEncoder([item[0] for item in corpus])
     word_vectorizer = Glove([item[0] for item in corpus], config['glove_path'])
 
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     runner = Runner(environment=env, agent=agent, word_vectorizer=word_vectorizer)
     total_reward = []
     last_idx = 0
-    e = 1
+    e = 0.001
     for i in tqdm(range(4000)):
         for doc in corpus:
             # for idx in range(10):
@@ -221,6 +221,6 @@ if __name__ == '__main__':
                   np.sum(np.array(total_reward[last_idx:]) > 0) / len(total_reward[last_idx:]), e)
             last_idx = len(total_reward)
 
-        e = 0.5 / (i / 100 + 1)
+        # e = 1 / (i / 100 + 1)
         # if e < 0.1:
         #     e = 0.1
