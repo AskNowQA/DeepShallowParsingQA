@@ -18,12 +18,13 @@ torch.backends.cudnn.deterministic = True
 
 if __name__ == '__main__':
     dataset = LC_QuAD(config['lc_quad']['tiny'])
+    print(dataset.corpus)
 
-    lr = 0.0001
+    lr = 0.001
     word_vectorizer = Glove([item[0] for item in dataset.corpus], config['glove_path'])
 
-    policy_network = Policy(input_size=word_vectorizer.word_size + 1,
-                            hidden_size=int(word_vectorizer.word_size * 2),
+    policy_network = Policy(input_size=word_vectorizer.word_size * 2 + 1,
+                            hidden_size=int(word_vectorizer.word_size*4),
                             output_size=2,
                             dropout_ratio=0.5)
     agent = Agent(number_of_relations=2, gamma=0.9,
@@ -37,7 +38,7 @@ if __name__ == '__main__':
     total_reward = []
     last_idx = 0
     e = 0.001
-    for i in tqdm(range(4000)):
+    for i in tqdm(range(1000)):
         for doc in dataset.corpus:
             env.set_target(doc[2])
             total_reward.append(runner.step(doc[1], doc[0], e))

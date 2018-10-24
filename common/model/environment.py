@@ -23,7 +23,11 @@ class Environment:
         self.action_seq = []
 
     def next_token(self):
-        output = self.input_seq_embeddings[self.seq_counter % self.input_seq_size].reshape(-1)
+        idx = self.seq_counter % self.input_seq_size
+        if idx == 0:
+            output = torch.cat((torch.zeros(300), self.input_seq_embeddings[idx])).reshape(-1)
+        else:
+            output = self.input_seq_embeddings[idx - 1:idx + 1].reshape(-1)
         self.seq_counter += 1
         return output
 
@@ -32,7 +36,6 @@ class Environment:
 
     def update_state(self, action, new_token):
         return torch.cat((torch.FloatTensor([action]), new_token))
-        # return torch.cat((torch.FloatTensor([action]), torch.zeros(new_token.size(0)), new_token))
 
     def step(self, action):
         reward = 0
