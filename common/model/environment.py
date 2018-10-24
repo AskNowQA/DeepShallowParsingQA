@@ -10,23 +10,25 @@ class Environment:
         self.target = []
         self.input_seq = []
         self.input_seq_embeddings = []
-        self.seq_counter = -1
+        self.seq_counter = 0
         self.action_seq = []
 
     def init(self, raw_input, input_seq, input_seq_embeddings):
         self.raw_input = raw_input
         self.input_seq = input_seq
         self.input_seq_embeddings = input_seq_embeddings
-        self.seq_counter = -1
+        self.input_seq_size = len(self.input_seq_embeddings)
+        self.seq_counter = 0
         self.state = torch.cat((torch.FloatTensor([1]), self.next_token()))
         self.action_seq = []
 
     def next_token(self):
+        output = self.input_seq_embeddings[self.seq_counter % self.input_seq_size].reshape(-1)
         self.seq_counter += 1
-        return self.input_seq_embeddings[self.seq_counter - 1].reshape(-1)
+        return output
 
     def is_done(self):
-        return self.seq_counter == len(self.input_seq_embeddings)  # or np.sum(self.action_seq) > 2
+        return self.seq_counter == len(self.input_seq_embeddings) + 1  # or np.sum(self.action_seq) > 2
 
     def update_state(self, action, new_token):
         return torch.cat((torch.FloatTensor([action]), new_token))
