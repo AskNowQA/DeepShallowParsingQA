@@ -4,12 +4,12 @@ import numpy as np
 
 
 class UnorderedLinker:
-    def __init__(self, dataset_path, relations_path):
-        with open(dataset_path, 'rb') as f_h:
+    def __init__(self, rel2id_path, core_chains_path, dataset):
+        self.dataset = dataset
+        with open(rel2id_path, 'rb') as f_h:
             self.rel2id = pk.load(f_h, encoding='latin1')
             self.id2rel = {v[0]: ([k] + v[1:]) for k, v in self.rel2id.items()}
-
-        with open(relations_path, 'rb') as f_h:
+        with open(core_chains_path, 'rb') as f_h:
             self.core_chains = json.load(f_h)
 
     def __find_core_chain(self, question):
@@ -27,3 +27,14 @@ class UnorderedLinker:
             hop_2 = list(set([item[3] for item in hop_2]))
             results = [self.id2rel[id] for id in set(hop_1 + hop_2)]
             return results
+
+    def link_all(self, surfaces, question):
+        output = []
+        for item in surfaces:
+            output.append(self.link(item, question))
+        return output
+
+    def best_ranks(self, surfaces, question):
+        output = self.link_all(surfaces, question)
+        for item in output:
+            pass
