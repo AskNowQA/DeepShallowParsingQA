@@ -43,20 +43,21 @@ class Glove(WordVectorizer):
         # saved file not found, read from txt file
         # and create tensors for word vectors
         print('==> File not found, preparing, be patient')
-        count = sum(1 for line in open(path + '.txt'))
+        print(path + '.txt')
+        count = sum(1 for line in open(path + '.txt', encoding="utf-8"))
         with open(path + '.txt', 'r') as f:
             contents = f.readline().rstrip('\n').split(' ')
             dim = len(contents[1:])
         words = [None] * (count)
         vectors = torch.zeros(count, dim)
-        with open(path + '.txt', 'r') as f:
+        with open(path + '.txt', 'r', encoding="utf-8") as f:
             idx = 0
             for line in f:
                 contents = line.rstrip('\n').split(' ')
                 words[idx] = contents[0]
                 vectors[idx] = torch.Tensor(list(map(float, contents[1:])))
                 idx += 1
-        with open(path + '.vocab', 'w') as f:
+        with open(path + '.vocab', 'w', encoding="utf-8") as f:
             for word in words:
                 f.write(word + '\n')
         vocab = Vocab(filename=path + '.vocab')
