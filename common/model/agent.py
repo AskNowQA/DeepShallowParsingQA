@@ -8,9 +8,15 @@ class Agent:
         self.actions = range(number_of_relations + 1)
         self.policy_network = policy_network
         self.policy_optimizer = policy_optimizer
+        self.cuda = torch.cuda.is_available()
+        if self.cuda:
+            self.policy_network.cuda()
 
     def select_action(self, state, e):
-        action_dist = self.policy_network(torch.FloatTensor(state))
+        state = torch.FloatTensor(state)
+        if self.cuda:
+            state = state.cuda()
+        action_dist = self.policy_network(state)
         m = torch.distributions.Categorical(action_dist)
         if np.random.rand(1) < e:
             action = torch.multinomial(torch.zeros(len(action_dist)) + 0.5, 1)[0]
@@ -23,7 +29,11 @@ class Agent:
         self.policy_network.zero_grad()
         if not label_target:
             rewards = self.discount_rewards(rewards)
-            loss = -torch.dot(rewards, torch.stack(action_log_probs))  # .clamp(min=1e-6)
+            action_log_probs = torch.stack(action_log_probs)
+            if self.cuda:
+                rewards = rewards.cuda()
+                action_log_probs = action_log_probs.cuda()
+            loss = -torch.dot(rewards, action_log_probs)  # .clamp(min=1e-6)
             loss.backward()
 
         # else:
