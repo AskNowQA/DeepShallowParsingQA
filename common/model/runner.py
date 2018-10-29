@@ -1,15 +1,14 @@
 class Runner:
-    def __init__(self, environment, agent, word_vectorizer):
+    def __init__(self, environment, agent):
         self.environment = environment
         self.agent = agent
-        self.word_vectorizer = word_vectorizer
 
-    def step(self, raw_input, input, e):
+    def step(self, input, e):
         rewards = []
         action_log_probs = []
         total_reward = []
         running_reward = 0
-        self.environment.init(raw_input, input.split(), self.word_vectorizer.decode(input))
+        self.environment.init(input)
         state = self.environment.state
         while True:
             action_dist, action, action_log_prob = self.agent.select_action(state, e)

@@ -13,7 +13,6 @@ class Agent:
             self.policy_network.cuda()
 
     def select_action(self, state, e):
-        state = torch.FloatTensor(state)
         if self.cuda:
             state = state.cuda()
         action_dist = self.policy_network(state)
@@ -22,6 +21,8 @@ class Agent:
             action = torch.multinomial(torch.zeros(len(action_dist)) + 0.5, 1)[0]
         else:
             action = m.sample()
+        if self.cuda:
+            action = action.cuda()
         return action_dist, action, m.log_prob(action)
 
     def optimize(self, rewards, action_log_probs):
