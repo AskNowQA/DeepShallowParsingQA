@@ -2,40 +2,38 @@ import torch
 
 
 class Environment:
-    def __init__(self, linker, positive_reward=1, negetive_reward=-0.5):
+    def __init__(self, linker, positive_reward=1, negative_reward=-0.5):
         self.positive_reward = positive_reward
-        self.negetive_reward = negetive_reward
+        self.negative_reward = negative_reward
         self.linker = linker
         self.state = []
         self.target = []
         self.input_seq = []
-        self.input_seq_embeddings = []
+        self.input_seq_size = 0
         self.seq_counter = 0
         self.action_seq = []
 
-    def init(self, raw_input, input_seq, input_seq_embeddings):
-        self.raw_input = raw_input
-        self.input_seq = input_seq
-        self.input_seq_embeddings = input_seq_embeddings
-        self.input_seq_size = len(self.input_seq_embeddings)
+    def init(self, input_seq):
+        self.input_seq = torch.LongTensor(input_seq)
+        self.input_seq_size = len(self.input_seq)
         self.seq_counter = 0
-        self.state = torch.cat((torch.FloatTensor([1]), self.next_token()))
+        self.state = torch.cat((torch.LongTensor([0]), self.next_token()))
         self.action_seq = []
 
     def next_token(self):
         idx = self.seq_counter % self.input_seq_size
         if idx == 0:
-            output = torch.cat((torch.zeros(300), self.input_seq_embeddings[idx])).reshape(-1)
+            output = torch.cat((torch.LongTensor([0]), self.input_seq[idx].reshape(-1)))
         else:
-            output = self.input_seq_embeddings[idx - 1:idx + 1].reshape(-1)
+            output = self.input_seq[idx - 1:idx + 1].reshape(-1)
         self.seq_counter += 1
         return output
 
     def is_done(self):
-        return self.seq_counter == len(self.input_seq_embeddings) + 1  # or np.sum(self.action_seq) > 2
+        return self.seq_counter == self.input_seq_size + 1  # or np.sum(self.action_seq) > 2
 
     def update_state(self, action, new_token):
-        return torch.cat((torch.FloatTensor([action]), new_token))
+        return torch.cat((torch.LongTensor([action]), new_token))
 
     def step(self, action):
         reward = 0
@@ -65,7 +63,7 @@ class Environment:
             if self.action_seq == self.target:
                 reward = self.positive_reward
             else:
-                reward = self.negetive_reward
+                reward = self.negative_reward
         return self.state, reward, is_done
 
     def set_target(self, target):

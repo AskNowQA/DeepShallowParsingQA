@@ -7,25 +7,24 @@ import ujson as json
 
 
 class Glove(WordVectorizer):
-    def __init__(self, corpus, path):
-        super(Glove, self).__init__(corpus)
-
-        if os.path.isfile(path + '.emd') and os.path.isfile(path + '.corpus'):
-            with open(path + '.corpus', 'r') as file_handler:
-                self.doc_idx = json.load(file_handler)
-            self.embd = torch.load(path + '.emd')
-            self.vocab = Vocab()
-            self.vectors = []
-            self.word_size = self.embd[0].size(1)
+    def __init__(self, dataset, glove_path, emb_path):
+        super(Glove, self).__init__(dataset)
+        if os.path.isfile(emb_path):
+            self.emb = torch.load(emb_path)
+            self.word_size = self.emb.size(1)
         else:
-            self.vocab, self.vectors = self.load_word_vectors(path)
+            self.glove_vocab, self.vectors = self.load_word_vectors(glove_path)
             self.word_size = self.vectors.size(1)
-            self.doc_idx = {}
-            self.embd = [self.decode(doc) for doc in corpus]
-            self.doc_idx = {doc: idx for idx, doc in enumerate(corpus)}
-            with open(path + '.corpus', 'w') as file_handler:
-                json.dump(self.doc_idx, file_handler)
-            torch.save(self.embd, path + '.emd')
+
+            self.emb = torch.Tensor(dataset.vocab.size(), self.vectors.size(1)).normal_(-0.05, 0.05)
+            for word in dataset.vocab.labelToIdx.keys():
+                if self.glove_vocab.getIndex(word):
+                    self.emb[dataset.vocab.getIndex(word)] = self.vectors[self.glove_vocab.getIndex(word)]
+            self.emb[dataset.vocab.getIndex('')] = torch.zeros([self.word_size])
+            torch.save(self.emb, emb_path)
+
+        if torch.cuda.is_available():
+            self.emb = self.emb.cuda()
 
     def load_word_vectors(self, path):
         """
@@ -75,16 +74,3 @@ class Glove(WordVectorizer):
                 output[idx] = self.vectors[self.vocab.labelToIdx[word]]
 
         return output
-
-
-if __name__ == '__main__':
-    corpus = [
-        'This is the first document.',
-        'This document is the second document.',
-        'And this is the third one.',
-        'Is this the first document?',
-        'Is this the first document?',
-    ]
-
-    vectorizer = Glove(corpus, '/Users/hamid/workspace/SQG/learning/treelstm/data/glove/glove.840B.300d')
-    print(vectorizer.decode('this is the third one.'))

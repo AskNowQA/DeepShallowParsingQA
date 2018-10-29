@@ -17,31 +17,36 @@ torch.manual_seed(6)
 torch.backends.cudnn.deterministic = True
 
 if __name__ == '__main__':
-    dataset = LC_QuAD(config['lc_quad']['tiny'])
-    print(dataset.corpus)
+    lc_quad = LC_QuAD(config['lc_quad']['tiny'], config['lc_quad']['vocab'])
+    print(lc_quad.corpus)
 
-    lr = 0.001
-    word_vectorizer = Glove([item[0] for item in dataset.corpus], config['glove_path'])
+    lr = 0.0001
+    word_vectorizer = Glove(lc_quad, config['glove_path'], config['lc_quad']['emb'])
 
-    policy_network = Policy(input_size=word_vectorizer.word_size * 2 + 1,
-                            hidden_size=int(word_vectorizer.word_size*4),
+    policy_network = Policy(vocab_size=lc_quad.vocab.size(),
+                            emb_size=word_vectorizer.word_size,
+                            input_size=word_vectorizer.word_size * 2 + 1,
+                            hidden_size=int(word_vectorizer.word_size * 4),
                             output_size=2,
                             dropout_ratio=0.5)
+
+    policy_network.emb.weight.data.copy_(word_vectorizer.emb)
+
     agent = Agent(number_of_relations=2, gamma=0.9,
                   policy_network=policy_network, policy_optimizer=torch.optim.Adam(policy_network.parameters(), lr=lr))
     linker = OrderedLinker(sorter=StringSimilaritySorter(),
                            rel2id_path=config['lc_quad']['rel2id'],
                            core_chains_path=config['lc_quad']['core_chains'],
-                           dataset=dataset)
-    env = Environment(linker=linker, positive_reward=1, negetive_reward=-0.5)
-    runner = Runner(environment=env, agent=agent, word_vectorizer=word_vectorizer)
+                           dataset=lc_quad)
+    env = Environment(linker=linker, positive_reward=1, negative_reward=-0.5)
+    runner = Runner(environment=env, agent=agent)
     total_reward = []
     last_idx = 0
     e = 0.001
-    for i in tqdm(range(1000)):
-        for doc in dataset.corpus:
+    for i in tqdm(range(10000)):
+        for idx, doc in enumerate(lc_quad.dataset):
             env.set_target(doc[2])
-            total_reward.append(runner.step(doc[1], doc[0], e))
+            total_reward.append(runner.step(lc_quad.coded_corpus[idx], e))
 
         if i % 100 == 0:
             print(np.mean(total_reward[last_idx:]),
