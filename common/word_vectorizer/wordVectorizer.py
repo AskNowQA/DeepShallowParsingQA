@@ -1,3 +1,3 @@
 class WordVectorizer:
-    def __init__(self, corpus):
-        self.corpus = corpus
+    def __init__(self, dataset):
+        self.dataset = dataset
