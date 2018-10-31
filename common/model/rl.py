@@ -45,10 +45,10 @@ if __name__ == '__main__':
     e = 0.001
     for i in tqdm(range(10000)):
         for idx, doc in enumerate(lc_quad.dataset):
-            env.set_target(doc[2])
-            total_reward.append(runner.step(lc_quad.coded_corpus[idx], e))
+            env.set_target(doc.annotation)
+            total_reward.append(runner.step(lc_quad.coded_corpus[idx], doc.question, e))
 
-        if i % 100 == 0:
+        if i % 50 == 0:
             print(np.mean(total_reward[last_idx:]),
                   np.sum(np.array(total_reward[last_idx:]) > 0) / len(total_reward[last_idx:]), e)
             last_idx = len(total_reward)

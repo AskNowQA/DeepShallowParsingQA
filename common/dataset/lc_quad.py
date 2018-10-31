@@ -1,3 +1,4 @@
+from common.dataset.container.qarow import QARow
 from common.vocab import Vocab
 
 import ujson as json
@@ -9,12 +10,13 @@ class LC_QuAD:
         with open(dataset_path, 'r') as file_hanlder:
             self.raw_dataset = json.load(file_hanlder)
 
-            self.dataset = [[self.__preprocess(item['corrected_question']),
-                             item['corrected_question'],
-                             item['annotation']] for item in
+            self.dataset = [QARow(item['corrected_question'],
+                                  item['annotation'] if 'annotation' in item else '',
+                                  item['sparql_query'])
+                            for item in
                             self.raw_dataset]
-            self.corpus = [item[0] for item in self.dataset]
-            self.validate = all([(len(item[0].split()) == len(item[2])) for item in self.dataset])
+            self.corpus = [item.normalized_question for item in self.dataset]
+            self.validate = all([item.validate() for item in self.dataset])
             if self.validate:
                 if not os.path.isfile(vocab_path):
                     self.__build_vocab(self.corpus, vocab_path)
@@ -29,6 +31,3 @@ class LC_QuAD:
         with open(vocab_path, 'w') as f:
             for token in sorted(vocab):
                 f.write(token + '\n')
-
-    def __preprocess(self, line):
-        return line.lower().replace('?', ' ').replace('\'', ' ').replace('-', ' ').replace(',', ' ')
