@@ -75,12 +75,12 @@ class Vocab(object):
         return vec
 
     # Convert `idx` to labels. If index `stop` is reached, convert it and return.
-    def convertToLabels(self, idx, stop):
+    def convertToLabels(self, idx, stop=None):
         labels = []
 
         for i in idx:
-            labels += [self.getLabel(i)]
-            if i == stop:
+            labels += [self.getLabel(int(i))]
+            if stop is not None and i == stop:
                 break
 
         return labels
