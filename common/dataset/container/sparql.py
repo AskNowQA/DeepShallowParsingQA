@@ -8,5 +8,5 @@ class SPARQL:
 
     def __extract_relations(self, sparql):
         output = re.findall('<[^>]*>', sparql)
-        output = [item for item in output if '/ontology/' in item or '/property/' in item]
+        output = [item.strip('<>') for item in output if '/ontology/' in item or '/property/' in item]
         return output
