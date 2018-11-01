@@ -7,5 +7,9 @@ config = {
 
 config['lc_quad'] = {
     'tiny': os.path.join(config['data_path'], 'lcquad', 'tiny.json'),
-    'train': os.path.join(config['data_path'], 'lcquad', 'train-data.json')
+    'train': os.path.join(config['data_path'], 'lcquad', 'train-data.json'),
+    'rel2id': os.path.join(config['data_path'], 'lcquad', 'relations.pickle'),
+    'core_chains': os.path.join(config['data_path'], 'lcquad', 'id_big_data.json'),
+    'vocab': os.path.join(config['data_path'], 'lcquad', 'dataset.vocab'),
+    'emb': os.path.join(config['data_path'], 'lcquad', 'dataset.emb')
 }

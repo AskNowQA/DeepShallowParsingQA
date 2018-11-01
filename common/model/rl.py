@@ -40,18 +40,31 @@ if __name__ == '__main__':
                            dataset=lc_quad)
     env = Environment(linker=linker, positive_reward=1, negative_reward=-0.5)
     runner = Runner(environment=env, agent=agent)
+
+    ###### Test
+    print('Train')
     total_reward = []
     last_idx = 0
     e = 0.001
-    for i in tqdm(range(10000)):
-        for idx, doc in enumerate(lc_quad.dataset):
-            env.set_target(doc.annotation)
-            total_reward.append(runner.step(lc_quad.coded_corpus[idx], doc.question, e))
+    for i in tqdm(range(100)):
+        for idx, qarow in enumerate(lc_quad.dataset):
+            total_reward.append(runner.step(lc_quad.coded_corpus[idx], qarow, e))
 
-        if i % 50 == 0:
+        if i % 10 == 0:
             print(np.mean(total_reward[last_idx:]),
                   np.sum(np.array(total_reward[last_idx:]) > 0) / len(total_reward[last_idx:]), e)
             last_idx = len(total_reward)
+
+    ###### Test
+    print('test')
+    total_reward = []
+    last_idx = 0
+    for idx, qarow in enumerate(lc_quad.dataset):
+        total_reward.append(runner.step(lc_quad.coded_corpus[idx], qarow, e, False))
+
+    print(np.mean(total_reward[last_idx:]),
+          np.sum(np.array(total_reward[last_idx:]) > 0) / len(total_reward[last_idx:]), e)
+    last_idx = len(total_reward)
 
         # e = 1 / (i / 100 + 1)
         # if e < 0.1:

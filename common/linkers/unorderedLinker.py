@@ -28,13 +28,8 @@ class UnorderedLinker:
             results = [self.id2rel[id] for id in set(hop_1 + hop_2)]
             return results
 
-    def link_all(self, surfaces, question):
+    def link_all(self, surfaces, qarow):
         output = []
-        for item in surfaces:
-            output.append(self.link(item, question))
+        for surface in surfaces:
+            output.append(self.link(' '.join(self.dataset.vocab.convertToLabels(surface)), qarow.question))
         return output
-
-    def best_ranks(self, surfaces, question):
-        output = self.link_all(surfaces, question)
-        for item in output:
-            pass

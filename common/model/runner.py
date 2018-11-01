@@ -3,7 +3,8 @@ class Runner:
         self.environment = environment
         self.agent = agent
 
-    def step(self, input, e):
+    # @profile
+    def step(self, input, qarow, e, train=True):
         rewards = []
         action_log_probs = []
         total_reward = []
@@ -12,13 +13,14 @@ class Runner:
         state = self.environment.state
         while True:
             action_dist, action, action_log_prob = self.agent.select_action(state, e)
-            new_state, reward, done = self.environment.step(action)
+            new_state, reward, done = self.environment.step(action, qarow)
             running_reward += reward
             rewards.append(reward)
             action_log_probs.append(action_log_prob)
             state = new_state
             if done:
-                self.agent.optimize(rewards, action_log_probs)
+                if train:
+                    self.agent.optimize(rewards, action_log_probs)
                 total_reward.append(running_reward)
                 break
         return total_reward
