@@ -3,6 +3,7 @@ from common.vocab import Vocab
 
 import ujson as json
 import os
+import re
 
 
 class LC_QuAD:
@@ -14,12 +15,10 @@ class LC_QuAD:
                                   item['annotation'] if 'annotation' in item else '',
                                   item['sparql_query'])
                             for item in
-                            self.raw_dataset]
+                            self.raw_dataset if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
             self.corpus = [item.normalized_question for item in self.dataset]
-            self.validate = all([item.validate() for item in self.dataset])
-            if self.validate:
-                if not os.path.isfile(vocab_path):
-                    self.__build_vocab(self.corpus, vocab_path)
+            if not os.path.isfile(vocab_path):
+                self.__build_vocab(self.corpus, vocab_path)
             self.vocab = Vocab(filename=vocab_path)
             self.coded_corpus = [[self.vocab.getIndex(word) for word in item.split()] for item in self.corpus]
 
