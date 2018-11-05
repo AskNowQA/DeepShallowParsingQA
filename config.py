@@ -6,10 +6,14 @@ config = {
 }
 
 config['lc_quad'] = {
-    'tiny': os.path.join(config['data_path'], 'lcquad', 'tiny.json'),
-    'train': os.path.join(config['data_path'], 'lcquad', 'train-data.json'),
-    'rel2id': os.path.join(config['data_path'], 'lcquad', 'relations.pickle'),
-    'core_chains': os.path.join(config['data_path'], 'lcquad', 'id_big_data.json'),
-    'vocab': os.path.join(config['data_path'], 'lcquad', 'dataset.vocab'),
-    'emb': os.path.join(config['data_path'], 'lcquad', 'dataset.emb')
+    'base_path': os.path.join(config['data_path'], 'lcquad')
+}
+config['lc_quad'] = {
+    'tiny': os.path.join(config['lc_quad']['base_path'], 'tiny.json'),
+    'train': os.path.join(config['lc_quad']['base_path'], 'train-data.json'),
+    'test': os.path.join(config['lc_quad']['base_path'], 'test-data.json'),
+    'rel2id': os.path.join(config['lc_quad']['base_path'], 'relations.pickle'),
+    'core_chains': os.path.join(config['lc_quad']['base_path'], 'id_big_data.json'),
+    'vocab': os.path.join(config['lc_quad']['base_path'], 'dataset.vocab'),
+    'emb': os.path.join(config['lc_quad']['base_path'], 'dataset.emb')
 }

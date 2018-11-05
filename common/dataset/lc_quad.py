@@ -7,20 +7,31 @@ import re
 
 
 class LC_QuAD:
-    def __init__(self, dataset_path, vocab_path):
-        with open(dataset_path, 'r') as file_hanlder:
-            self.raw_dataset = json.load(file_hanlder)
+    def __init__(self, trianset_path, testset_path, vocab_path):
+        self.train_set, self.train_corpus = self.__load_dataset(trianset_path)
+        self.test_set, self.test_corpus = self.__load_dataset(testset_path)
 
-            self.dataset = [QARow(item['corrected_question'],
-                                  item['annotation'] if 'annotation' in item else '',
-                                  item['sparql_query'])
-                            for item in
-                            self.raw_dataset if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
-            self.corpus = [item.normalized_question for item in self.dataset]
-            if not os.path.isfile(vocab_path):
-                self.__build_vocab(self.corpus, vocab_path)
-            self.vocab = Vocab(filename=vocab_path)
-            self.coded_corpus = [[self.vocab.getIndex(word) for word in item.split()] for item in self.corpus]
+        self.corpus = self.train_corpus + self.test_corpus
+        if not os.path.isfile(vocab_path):
+            self.__build_vocab(self.corpus, vocab_path)
+        self.vocab = Vocab(filename=vocab_path)
+
+        self.coded_train_corpus = [[self.vocab.getIndex(word) for word in item.split()] for item in self.train_corpus]
+        self.coded_test_corpus = [[self.vocab.getIndex(word) for word in item.split()] for item in self.test_corpus]
+
+    def __load_dataset(self, dataset_path):
+        if not os.path.isfile(dataset_path):
+            return [], []
+        with open(dataset_path, 'r') as file_hanlder:
+            raw_dataset = json.load(file_hanlder)
+
+            dataset = [QARow(item['corrected_question'],
+                             item['annotation'] if 'annotation' in item else '',
+                             item['sparql_query'])
+                       for item in
+                       raw_dataset if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
+            corpus = [item.normalized_question for item in dataset]
+            return dataset, corpus
 
     def __build_vocab(self, lines, vocab_path):
         vocab = set()

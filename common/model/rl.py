@@ -17,7 +17,7 @@ torch.manual_seed(6)
 torch.backends.cudnn.deterministic = True
 
 if __name__ == '__main__':
-    lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['vocab'])
+    lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'])
 
     k = 10
     lr = 0.0001
@@ -47,9 +47,9 @@ if __name__ == '__main__':
     total_rmm = []
     last_idx = 0
     e = 0.001
-    for i in tqdm(range(50)):
-        for idx, qarow in enumerate(lc_quad.dataset):
-            reward, mrr = runner.step(lc_quad.coded_corpus[idx], qarow, e, k=k)
+    for i in tqdm(range(100)):
+        for idx, qarow in enumerate(lc_quad.train_set):
+            reward, mrr = runner.step(lc_quad.coded_train_corpus[idx], qarow, e, k=k)
             total_reward.append(reward)
             total_rmm.append(mrr)
 
@@ -63,8 +63,8 @@ if __name__ == '__main__':
     print('Test')
     total_rmm = []
     last_idx = 0
-    for idx, qarow in enumerate(lc_quad.dataset):
-        reward, mrr = runner.step(lc_quad.coded_corpus[idx], qarow, e, train=False, k=k)
+    for idx, qarow in enumerate(lc_quad.test_set):
+        reward, mrr = runner.step(lc_quad.coded_test_corpus[idx], qarow, e, train=False, k=k)
         total_rmm.append(mrr)
 
     print(np.mean(total_rmm))
