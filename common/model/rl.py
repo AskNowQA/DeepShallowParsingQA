@@ -17,9 +17,9 @@ torch.manual_seed(6)
 torch.backends.cudnn.deterministic = True
 
 if __name__ == '__main__':
-    lc_quad = LC_QuAD(config['lc_quad']['tiny'], config['lc_quad']['vocab'])
-    print(lc_quad.corpus)
+    lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['vocab'])
 
+    k = 10
     lr = 0.0001
     word_vectorizer = Glove(lc_quad, config['glove_path'], config['lc_quad']['emb'])
 
@@ -41,31 +41,35 @@ if __name__ == '__main__':
     env = Environment(linker=linker, positive_reward=1, negative_reward=-0.5)
     runner = Runner(environment=env, agent=agent)
 
-    ###### Test
+    ###### Train
     print('Train')
     total_reward = []
+    total_rmm = []
     last_idx = 0
     e = 0.001
-    for i in tqdm(range(100)):
+    for i in tqdm(range(50)):
         for idx, qarow in enumerate(lc_quad.dataset):
-            total_reward.append(runner.step(lc_quad.coded_corpus[idx], qarow, e))
+            reward, mrr = runner.step(lc_quad.coded_corpus[idx], qarow, e, k=k)
+            total_reward.append(reward)
+            total_rmm.append(mrr)
 
-        if i % 10 == 0:
-            print(np.mean(total_reward[last_idx:]),
-                  np.sum(np.array(total_reward[last_idx:]) > 0) / len(total_reward[last_idx:]), e)
+        if i > 0 and i % 10 == 0:
+            print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]))
             last_idx = len(total_reward)
-
-    ###### Test
-    print('test')
-    total_reward = []
-    last_idx = 0
-    for idx, qarow in enumerate(lc_quad.dataset):
-        total_reward.append(runner.step(lc_quad.coded_corpus[idx], qarow, e, False))
 
     print(np.mean(total_reward[last_idx:]),
           np.sum(np.array(total_reward[last_idx:]) > 0) / len(total_reward[last_idx:]), e)
     last_idx = len(total_reward)
 
-        # e = 1 / (i / 100 + 1)
-        # if e < 0.1:
-        #     e = 0.1
+    ###### Test
+    print('Test')
+    total_rmm = []
+    last_idx = 0
+    for idx, qarow in enumerate(lc_quad.dataset):
+        reward, mrr = runner.step(lc_quad.coded_corpus[idx], qarow, e, k=k)
+        total_rmm.append(mrr)
+
+    print(np.mean(total_rmm))
+    # e = 1 / (i / 100 + 1)
+    # if e < 0.1:
+    #     e = 0.1

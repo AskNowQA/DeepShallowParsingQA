@@ -11,21 +11,23 @@ class OrderedLinker(UnorderedLinker):
         ordered_results = self.sorter.sort(surface, question, unordered_results)
         return ordered_results
 
-    def best_ranks(self, surfaces, qarow):
+    def best_ranks(self, surfaces, qarow, k):
         output = self.link_all(surfaces, qarow)
+        mrr = 0
         if len(output) == 0:
-            return -1
+            return -1, mrr
         output2 = []
         for relation in qarow.sparql.relations:
             for candidates_idx, candidates in enumerate(output):
                 number_of_candidates = len(candidates)
                 for idx, candidate in enumerate(candidates):
                     if candidate[0] == relation:
-                        output2.append([relation, candidates_idx, 1 - idx / number_of_candidates])
+                        output2.append([relation, candidates_idx, 1 - idx / number_of_candidates, idx])
         output2.sort(key=lambda x: x[2], reverse=True)
         used_relations = []
         used_candidates = []
         scores = []
+        rank = []
         for item in output2:
             if item[0] in used_relations:
                 continue
@@ -35,5 +37,9 @@ class OrderedLinker(UnorderedLinker):
                 used_relations.append(item[0])
                 used_candidates.append(item[1])
                 scores.append(item[2])
-
-        return sum(scores) / max(len(qarow.sparql.relations), len(surfaces))
+                if item[3] <= k:
+                    rank.append(item[3])
+        max_len = max(len(qarow.sparql.relations), len(surfaces))
+        if k > 0 and max_len > 0:
+            mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
+        return sum(scores) / max_len, mrr

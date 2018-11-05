@@ -35,8 +35,9 @@ class Environment:
     def update_state(self, action, new_token):
         return torch.cat((torch.LongTensor([action]), new_token))
 
-    def step(self, action, qarow):
+    def step(self, action, qarow, train, k):
         reward = 0
+        mrr = 0
         self.state = self.update_state(action, self.next_token())
         self.action_seq.append(action)
         is_done = self.is_done()
@@ -58,10 +59,10 @@ class Environment:
             if len(surface) > 1:
                 surfaces.append(surface)
 
-            score = self.linker.best_ranks(surfaces, qarow)
+            score, mrr = self.linker.best_ranks(surfaces, qarow, k)
 
             if score < 0.6:
                 reward = score * 10 * self.negative_reward
             else:
                 reward = score * 10 * self.positive_reward
-        return self.state, reward, is_done
+        return self.state, reward, is_done, mrr
