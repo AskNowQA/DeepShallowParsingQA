@@ -13,7 +13,7 @@ class Policy(nn.Module):
         self.dropout = nn.Dropout(p=dropout_ratio)
 
         self.layer2 = nn.Linear(int(hidden_size), output_size, bias=False)
-        self.activation2 = nn.Softmax()
+        self.activation2 = nn.Softmax(dim=0)
 
     def forward(self, input):
         input = torch.cat((input[0].float().reshape(-1), self.emb(input[1:3]).reshape(-1)))
