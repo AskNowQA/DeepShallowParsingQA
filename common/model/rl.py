@@ -57,16 +57,14 @@ if __name__ == '__main__':
             print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]))
             last_idx = len(total_reward)
 
-    print(np.mean(total_reward[last_idx:]),
-          np.sum(np.array(total_reward[last_idx:]) > 0) / len(total_reward[last_idx:]), e)
-    last_idx = len(total_reward)
+    print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]))
 
     ###### Test
     print('Test')
     total_rmm = []
     last_idx = 0
     for idx, qarow in enumerate(lc_quad.dataset):
-        reward, mrr = runner.step(lc_quad.coded_corpus[idx], qarow, e, k=k)
+        reward, mrr = runner.step(lc_quad.coded_corpus[idx], qarow, e, train=False, k=k)
         total_rmm.append(mrr)
 
     print(np.mean(total_rmm))
