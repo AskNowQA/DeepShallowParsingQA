@@ -1,7 +1,5 @@
 import pickle as pk
 import ujson as json
-import numpy as np
-
 
 class UnorderedLinker:
     def __init__(self, rel2id_path, core_chains_path, dataset):
