@@ -24,14 +24,9 @@ class OrderedLinker(UnorderedLinker):
                     if candidate[0] == relation:
                         output2.append([relation, candidates_idx, 1 - idx / number_of_candidates, idx])
         output2.sort(key=lambda x: x[2], reverse=True)
-        used_relations = []
-        used_candidates = []
-        scores = []
-        rank = []
+        used_relations, used_candidates, scores, rank = [], [], [], []
         for item in output2:
-            if item[0] in used_relations:
-                continue
-            elif item[1] in used_candidates:
+            if item[0] in used_relations or item[1] in used_candidates:
                 continue
             else:
                 used_relations.append(item[0])
