@@ -12,14 +12,15 @@ class Glove(WordVectorizer):
         if os.path.isfile(emb_path):
             self.emb = torch.load(emb_path)
             self.word_size = self.emb.size(1)
+            self.vocab, self.vectors = self.load_word_vectors(glove_path)
         else:
-            self.glove_vocab, self.vectors = self.load_word_vectors(glove_path)
+            self.vocab, self.vectors = self.load_word_vectors(glove_path)
             self.word_size = self.vectors.size(1)
 
             self.emb = torch.Tensor(dataset.vocab.size(), self.vectors.size(1)).normal_(-0.05, 0.05)
             for word in dataset.vocab.labelToIdx.keys():
-                if self.glove_vocab.getIndex(word):
-                    self.emb[dataset.vocab.getIndex(word)] = self.vectors[self.glove_vocab.getIndex(word)]
+                if self.vocab.getIndex(word):
+                    self.emb[dataset.vocab.getIndex(word)] = self.vectors[self.vocab.getIndex(word)]
             self.emb[dataset.vocab.getIndex('')] = torch.zeros([self.word_size])
             torch.save(self.emb, emb_path)
 
@@ -64,10 +65,7 @@ class Glove(WordVectorizer):
         return vocab, vectors
 
     def decode(self, word_seq):
-        if word_seq in self.doc_idx:
-            return self.embd[self.doc_idx[word_seq]]
-
-        word_seq = word_seq.split()
+        word_seq = word_seq.lower().split()
         output = torch.Tensor(len(word_seq), self.word_size).normal_(-0.05, 0.05)
         for idx, word in enumerate(word_seq):
             if word in self.vocab.labelToIdx:
