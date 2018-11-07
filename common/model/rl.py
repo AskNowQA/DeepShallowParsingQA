@@ -11,6 +11,7 @@ from common.model.environment import Environment
 from common.model.runner import Runner
 from common.linkers.orderedLinker import OrderedLinker
 from common.linkers.stringSimilaritySorter import StringSimilaritySorter
+from common.linkers.embeddingSimilaritySorter import EmbeddingSimilaritySorter
 
 np.random.seed(6)
 torch.manual_seed(6)
@@ -34,7 +35,7 @@ if __name__ == '__main__':
 
     agent = Agent(number_of_relations=2, gamma=0.9,
                   policy_network=policy_network, policy_optimizer=torch.optim.Adam(policy_network.parameters(), lr=lr))
-    linker = OrderedLinker(sorter=StringSimilaritySorter(),
+    linker = OrderedLinker(sorter=EmbeddingSimilaritySorter(word_vectorizer),
                            rel2id_path=config['lc_quad']['rel2id'],
                            core_chains_path=config['lc_quad']['core_chains'],
                            dataset=lc_quad)
