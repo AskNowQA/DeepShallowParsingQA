@@ -30,7 +30,8 @@ class LC_QuAD:
                              item['sparql_query'])
                        for item in
                        raw_dataset]
-            dataset = [row for row in dataset if len(row.sparql.relations) == 1]
+                       #if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
+            dataset = [row for row in dataset if len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1]
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus
 
