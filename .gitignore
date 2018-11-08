@@ -1,3 +1,11 @@
+data/**
+
+.DS_Store
+.idea/**
+line_profiler/**
+**tmp**
+**checkpoint**
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
