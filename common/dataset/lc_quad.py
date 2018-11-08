@@ -16,8 +16,8 @@ class LC_QuAD:
             self.__build_vocab(self.corpus, vocab_path)
         self.vocab = Vocab(filename=vocab_path)
 
-        self.coded_train_corpus = [[self.vocab.getIndex(word) for word in item.split()] for item in self.train_corpus]
-        self.coded_test_corpus = [[self.vocab.getIndex(word) for word in item.split()] for item in self.test_corpus]
+        self.coded_train_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.train_corpus]
+        self.coded_test_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.test_corpus]
 
     def __load_dataset(self, dataset_path):
         if not os.path.isfile(dataset_path):
@@ -29,14 +29,14 @@ class LC_QuAD:
                              item['annotation'] if 'annotation' in item else '',
                              item['sparql_query'])
                        for item in
-                       raw_dataset if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
+                       raw_dataset]
+            dataset = [row for row in dataset if len(row.sparql.relations) == 1]
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus
 
     def __build_vocab(self, lines, vocab_path):
         vocab = set()
-        for line in lines:
-            tokens = line.rstrip('\n').split(' ')
+        for tokens in lines:
             vocab |= set(tokens)
         with open(vocab_path, 'w') as f:
             for token in sorted(vocab):

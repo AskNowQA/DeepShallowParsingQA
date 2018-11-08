@@ -1,12 +1,14 @@
 import re
+from common.dataset.container.uri import URI
 
 
 class SPARQL:
     def __init__(self, raw_sparql):
         self.raw_sparql = raw_sparql
-        self.relations = self.__extract_relations(self.raw_sparql)
+        self.entities, self.relations = self.__extract_relations(self.raw_sparql)
 
     def __extract_relations(self, sparql):
         output = re.findall('<[^>]*>', sparql)
-        output = [item.strip('<>') for item in output if '/ontology/' in item or '/property/' in item]
-        return output
+        relations = [URI(item) for item in output if '/ontology/' in item or '/property/' in item]
+        entities = [URI(item) for item in output if '/resource/' in item]
+        return entities, relations
