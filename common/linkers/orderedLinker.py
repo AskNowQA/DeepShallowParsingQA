@@ -21,7 +21,7 @@ class OrderedLinker(UnorderedLinker):
             for candidates_idx, candidates in enumerate(output):
                 number_of_candidates = len(candidates)
                 for idx, candidate in enumerate(candidates):
-                    if candidate[0] == relation:
+                    if candidate[0] == relation.raw_uri:
                         output2.append([relation, candidates_idx, 1 - idx / number_of_candidates, idx])
         output2.sort(key=lambda x: x[2], reverse=True)
         used_relations, used_candidates, scores, rank = [], [], [], []
