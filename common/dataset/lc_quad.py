@@ -7,9 +7,9 @@ import re
 
 
 class LC_QuAD:
-    def __init__(self, trianset_path, testset_path, vocab_path):
-        self.train_set, self.train_corpus = self.__load_dataset(trianset_path)
-        self.test_set, self.test_corpus = self.__load_dataset(testset_path)
+    def __init__(self, trianset_path, testset_path, vocab_path, remove_entity_mention=False, remove_stop_words=False):
+        self.train_set, self.train_corpus = self.__load_dataset(trianset_path, remove_entity_mention, remove_stop_words)
+        self.test_set, self.test_corpus = self.__load_dataset(testset_path, remove_entity_mention, remove_stop_words)
 
         self.corpus = self.train_corpus + self.test_corpus
         if not os.path.isfile(vocab_path):
@@ -19,7 +19,7 @@ class LC_QuAD:
         self.coded_train_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.train_corpus]
         self.coded_test_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.test_corpus]
 
-    def __load_dataset(self, dataset_path):
+    def __load_dataset(self, dataset_path, remove_entity_mention, remove_stop_words):
         if not os.path.isfile(dataset_path):
             return [], []
         with open(dataset_path, 'r') as file_hanlder:
@@ -27,10 +27,11 @@ class LC_QuAD:
 
             dataset = [QARow(item['corrected_question'],
                              item['annotation'] if 'annotation' in item else '',
-                             item['sparql_query'])
+                             item['sparql_query'],
+                             remove_entity_mention, remove_stop_words)
                        for item in
                        raw_dataset]
-                       #if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
+            # if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
             dataset = [row for row in dataset if len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1]
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus

@@ -28,9 +28,12 @@ if __name__ == '__main__':
     parser.add_argument('--k', default=10, type=int, help='top-k candidate')
     parser.add_argument('--e', default=0.001, type=float, help='epsilon-greedy value')
     parser.add_argument('--sim', default='str', help='similarity (default: str) str or emb')
+    parser.add_argument('--remove_entity', dest='remove_entity', action='store_true')
+    parser.add_argument('--remove_stop_words', dest='remove_stop_words', action='store_true')
     args = parser.parse_args()
 
-    lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'])
+    lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
+                      args.remove_entity, args.remove_stop_words)
 
     word_vectorizer = Glove(lc_quad, config['glove_path'], config['lc_quad']['emb'])
 
