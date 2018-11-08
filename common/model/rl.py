@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', default=100, type=int, help='number of total epochs to run')
     parser.add_argument('--lr', default=0.0001, type=float, help='learning rate')
     parser.add_argument('--gamma', default=0.9, type=float, help='gamma')
+    parser.add_argument('--dropout', default=0.5, type=float, help='dropout')
     parser.add_argument('--k', default=10, type=int, help='top-k candidate')
     parser.add_argument('--e', default=0.001, type=float, help='epsilon-greedy value')
     parser.add_argument('--sim', default='str', help='similarity (default: str) str or emb')
@@ -38,7 +39,7 @@ if __name__ == '__main__':
                             input_size=word_vectorizer.word_size * 2 + 1,
                             hidden_size=int(word_vectorizer.word_size * 4),
                             output_size=2,
-                            dropout_ratio=0.5)
+                            dropout_ratio=args.dropout)
 
     policy_network.emb.weight.data.copy_(word_vectorizer.emb)
     agent = Agent(number_of_relations=2,
