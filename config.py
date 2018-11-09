@@ -1,9 +1,11 @@
 import os
 
 config = {
-    'glove_path': '/Users/hamid/workspace/SQG/learning/treelstm/data/glove/glove.840B.300d',
-    'data_path': '/Users/hamid/workspace/DeepShallowParsingQA/data'
+    'base_path': '/Users/hamid/workspace/DeepShallowParsingQA',
 }
+config['data_path'] = os.path.join(config['base_path'], 'data')
+config['glove_path'] = os.path.join(config['data_path'], 'glove/glove.840B.300d')
+config['checkpoint_path'] = os.path.join(config['base_path'], 'checkpoint.chpt')
 
 config['lc_quad'] = {
     'base_path': os.path.join(config['data_path'], 'lcquad')
