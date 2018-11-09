@@ -34,7 +34,9 @@ class Runner:
                                rel2id_path=config['lc_quad']['rel2id'],
                                core_chains_path=config['lc_quad']['core_chains'],
                                dataset=lc_quad)
-        self.environment = Environment(linker=linker, positive_reward=1, negative_reward=-0.5)
+        self.environment = Environment(linker=linker,
+                                       positive_reward=args.positive_reward,
+                                       negative_reward=args.negative_reward)
 
     def load_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
         checkpoint = torch.load(checkpoint_filename)
