@@ -57,7 +57,7 @@ class Runner:
                 total_reward.append(reward)
                 total_rmm.append(mrr)
                 total_loss.append(float(loss))
-            if epoch > 0 and epoch % 1 == 0:
+            if epoch > 0 and epoch % 10 == 0:
                 mean_loss = np.mean(total_loss[last_idx:])
                 print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]), mean_loss)
                 last_idx = len(total_reward)
