@@ -47,6 +47,7 @@ class Agent:
         #     output.backward()
 
         self.policy_optimizer.step()
+        return loss
 
     # @profile
     def discount_rewards(self, r):

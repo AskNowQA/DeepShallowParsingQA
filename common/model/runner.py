@@ -47,33 +47,31 @@ class Runner:
         torch.save(checkpoint, checkpoint_filename)
 
     def train(self, lc_quad, args, checkpoint_filename=config['checkpoint_path']):
-        total_reward = []
-        total_rmm = []
+        total_reward, total_rmm, total_loss = [], [], []
         last_idx = 0
         for epoch in tqdm(range(args.epochs)):
             for idx, qarow in enumerate(lc_quad.train_set):
-                reward, mrr = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k)
+                reward, mrr, loss = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k)
                 total_reward.append(reward)
                 total_rmm.append(mrr)
+                total_loss.append(float(loss))
             if epoch > 0 and epoch % 10 == 0:
-                print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]))
+                print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]), np.mean(total_loss[last_idx:]))
                 last_idx = len(total_reward)
                 self.save_checkpoint(checkpoint_filename)
-        print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]))
+        print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]), np.mean(total_loss[last_idx:]))
 
     def test(self, lc_quad, args):
         total_rmm = []
         for idx, qarow in enumerate(lc_quad.test_set):
-            reward, mrr = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
+            reward, mrr, loss = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
             total_rmm.append(mrr)
         print(np.mean(total_rmm))
 
     def step(self, input, qarow, e, train=True, k=0):
-        rewards = []
-        action_log_probs = []
-        total_reward = []
+        rewards, action_log_probs, total_reward = [], [], []
+        loss = 0
         running_reward = 0
-        mrr = 0
         self.environment.init(input)
         state = self.environment.state
         while True:
@@ -85,7 +83,7 @@ class Runner:
             state = new_state
             if done:
                 if train:
-                    self.agent.optimize(rewards, action_log_probs)
+                    loss = self.agent.optimize(rewards, action_log_probs)
                 total_reward.append(running_reward)
                 break
-        return total_reward, mrr
+        return total_reward, mrr, loss
