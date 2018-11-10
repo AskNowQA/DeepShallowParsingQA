@@ -12,7 +12,6 @@ class Agent:
         if self.cuda:
             self.policy_network.cuda()
 
-    # @profile
     def select_action(self, state, e):
         if self.cuda:
             state = state.cuda()
@@ -26,30 +25,18 @@ class Agent:
             action = action.cuda()
         return action_dist, action, m.log_prob(action)
 
-    # @profile
-    def optimize(self, rewards, action_log_probs):
+    def backward(self, rewards, action_log_probs):
         label_target = False
-        self.policy_network.zero_grad()
         if not label_target:
             rewards = self.discount_rewards(rewards)
             action_log_probs = torch.stack(action_log_probs)
             if self.cuda:
                 rewards = rewards.cuda()
                 action_log_probs = action_log_probs.cuda()
-            loss = -torch.dot(rewards, action_log_probs)  # .clamp(min=1e-6)
+            loss = -torch.dot(rewards, action_log_probs)
             loss.backward()
-
-        # else:
-        #     loss = nn.CrossEntropyLoss()
-        #     labels = torch.stack(list(episode_history[:, 4])).double().view(-1, 2)
-        #     targets = torch.LongTensor(global_target).view(-1)
-        #     output = loss(labels, targets)
-        #     output.backward()
-
-        self.policy_optimizer.step()
         return loss
 
-    # @profile
     def discount_rewards(self, r):
         discounted_r = torch.zeros((len(r)))
         running_add = 0

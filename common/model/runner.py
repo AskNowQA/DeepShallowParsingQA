@@ -48,25 +48,32 @@ class Runner:
 
     def train(self, lc_quad, args, checkpoint_filename=config['checkpoint_path']):
         total_reward, total_rmm, total_loss = [], [], []
-        min_loss, min_loss_index = 100, -1
+        max_rmm, max_rmm_index = 0, -1
         last_idx = 0
         iter = tqdm(range(args.epochs))
+        self.agent.policy_network.zero_grad()
         for epoch in iter:
             for idx, qarow in enumerate(lc_quad.train_set):
                 reward, mrr, loss = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k)
                 total_reward.append(reward)
                 total_rmm.append(mrr)
                 total_loss.append(float(loss))
+                if idx % args.batchsize == 0:
+                    self.agent.policy_optimizer.step()
+                    self.agent.policy_network.zero_grad()
+            self.agent.policy_optimizer.step()
+            self.agent.policy_network.zero_grad()
+
             if epoch > 0 and epoch % 10 == 0:
-                mean_loss = np.mean(total_loss[last_idx:])
-                print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]), mean_loss)
+                mean_rmm = np.mean(total_rmm[last_idx:])
+                print(np.mean(total_reward[last_idx:]), mean_rmm, np.mean(total_loss[last_idx:]))
                 last_idx = len(total_reward)
                 self.save_checkpoint(checkpoint_filename)
-                if mean_loss <= min_loss:
-                    min_loss = mean_loss
-                    min_loss_index = epoch
+                if mean_rmm > max_rmm:
+                    max_rmm = mean_rmm
+                    max_rmm_index = epoch
                 else:
-                    if epoch >= min_loss_index + 3:
+                    if epoch >= max_rmm_index + 30:
                         iter.close()
                         break
         if len(total_reward[last_idx:]) > 0:
@@ -96,7 +103,7 @@ class Runner:
             state = new_state
             if done:
                 if train:
-                    loss = self.agent.optimize(rewards, action_log_probs)
+                    loss = self.agent.backward(rewards, action_log_probs)
                 total_reward.append(running_reward)
                 break
         return total_reward, mrr, loss
