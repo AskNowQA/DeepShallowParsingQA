@@ -21,8 +21,8 @@ class QARow:
         output = []
         for word in line.split():
             if remove_entity_mention and (word in entity_labels and word not in QARow.stop_words):
-                if len(output) == 0 or output[-1] != 'ENT':
-                    output.append('ENT')
+                if len(output) == 0 or output[-1] != '<ENT>':
+                    output.append('<ENT>')
             elif remove_stop_words and word in QARow.stop_words:
                 pass
             else:
