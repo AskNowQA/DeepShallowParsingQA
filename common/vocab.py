@@ -18,11 +18,9 @@ class Vocab(object):
 
     # Load entries from a file.
     def loadFile(self, filename):
-        idx = 0
         for line in open(filename, encoding="utf-8"):
             token = line.rstrip('\n')
             self.add(token)
-            idx += 1
 
     def getIndex(self, key, default=None):
         key = key.lower() if self.lower else key
