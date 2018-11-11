@@ -13,6 +13,7 @@ torch.backends.cudnn.deterministic = True
 if __name__ == '__main__':
 
     args = parse_args()
+    print (args)
     lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
                       args.remove_entity, args.remove_stop_words)
     runner = Runner(lc_quad, args)
