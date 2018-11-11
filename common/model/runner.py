@@ -11,10 +11,20 @@ from common.linkers.orderedLinker import OrderedLinker
 from common.linkers.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.embeddingSimilaritySorter import EmbeddingSimilaritySorter
 
-
 class Runner:
     def __init__(self, lc_quad, args):
-        word_vectorizer = Glove(lc_quad, config['glove_path'], config['lc_quad']['emb'])
+        joint_vocab = lc_quad.vocab
+        joint_vocab.loadFile(config['lc_quad']['rel_vocab'])
+        word_vectorizer = Glove(joint_vocab, config['glove_path'], config['lc_quad']['emb'])
+        if args.sim == 'str':
+            sorter = StringSimilaritySorter()
+        else:
+            sorter = EmbeddingSimilaritySorter(word_vectorizer)
+        linker = OrderedLinker(sorter=sorter,
+                               rel2id_path=config['lc_quad']['rel2id'],
+                               core_chains_path=config['lc_quad']['core_chains'],
+                               dataset=lc_quad)
+
         policy_network = Policy(vocab_size=lc_quad.vocab.size(),
                                 emb_size=word_vectorizer.word_size,
                                 input_size=word_vectorizer.word_size * 2 + 1,
@@ -26,14 +36,7 @@ class Runner:
                            gamma=args.gamma,
                            policy_network=policy_network,
                            policy_optimizer=torch.optim.Adam(policy_network.parameters(), lr=args.lr))
-        if args.sim == 'str':
-            sorter = StringSimilaritySorter()
-        else:
-            sorter = EmbeddingSimilaritySorter(word_vectorizer)
-        linker = OrderedLinker(sorter=sorter,
-                               rel2id_path=config['lc_quad']['rel2id'],
-                               core_chains_path=config['lc_quad']['core_chains'],
-                               dataset=lc_quad)
+
         self.environment = Environment(linker=linker,
                                        positive_reward=args.positive_reward,
                                        negative_reward=args.negative_reward)
