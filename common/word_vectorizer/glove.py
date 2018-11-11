@@ -7,21 +7,20 @@ import ujson as json
 
 
 class Glove(WordVectorizer):
-    def __init__(self, dataset, glove_path, emb_path):
-        super(Glove, self).__init__(dataset)
+    def __init__(self, dataset_vocab, glove_path, emb_path):
+        super(Glove, self).__init__(dataset_vocab)
         if os.path.isfile(emb_path):
             self.emb = torch.load(emb_path)
             self.word_size = self.emb.size(1)
-            self.vocab, self.vectors = self.load_word_vectors(glove_path)
         else:
-            self.vocab, self.vectors = self.load_word_vectors(glove_path)
-            self.word_size = self.vectors.size(1)
+            vocab, vectors = self.load_word_vectors(glove_path)
+            self.word_size = vectors.size(1)
 
-            self.emb = torch.Tensor(dataset.vocab.size(), self.vectors.size(1)).normal_(-0.05, 0.05)
-            for word in dataset.vocab.labelToIdx.keys():
-                if self.vocab.getIndex(word):
-                    self.emb[dataset.vocab.getIndex(word)] = self.vectors[self.vocab.getIndex(word)]
-            self.emb[dataset.vocab.getIndex('')] = torch.zeros([self.word_size])
+            self.emb = torch.zeros(dataset_vocab.size(), vectors.size(1))  # .normal_(-0.05, 0.05)
+            for word in dataset_vocab.labelToIdx.keys():
+                if vocab.getIndex(word):
+                    self.emb[dataset_vocab.getIndex(word)] = vectors[vocab.getIndex(word)]
+            self.emb[dataset_vocab.getIndex('')] = torch.zeros([self.word_size])
             torch.save(self.emb, emb_path)
 
         if torch.cuda.is_available():
@@ -65,10 +64,10 @@ class Glove(WordVectorizer):
         return vocab, vectors
 
     def decode(self, word_seq):
-        word_seq = word_seq.lower().split()
-        output = torch.Tensor(len(word_seq), self.word_size).normal_(-0.05, 0.05)
+        word_seq = [word for word in word_seq.lower().split() if word != '<ent>']
+        output = torch.zeros(len(word_seq), self.word_size)  # .normal_(-0.05, 0.05)
         for idx, word in enumerate(word_seq):
-            if word in self.vocab.labelToIdx:
-                output[idx] = self.vectors[self.vocab.labelToIdx[word]]
+            if word in self.dataset_vocab.labelToIdx:
+                output[idx] = self.emb[self.dataset_vocab.labelToIdx[word]]
 
         return output
