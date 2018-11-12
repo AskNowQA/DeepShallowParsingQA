@@ -10,7 +10,7 @@ from sigopt import Connection
 def evaluate_model(lc_quad, args, assignments):
     print(assignments)
     args.gamma = assignments['gamma']
-    args.positive_reward = assignments['positive_reward']
+    # args.positive_reward = assignments['positive_reward']
     args.negetive_reward = assignments['negetive_reward']
     args.lr = assignments['lr']
     args.dropout = assignments['dropout']
@@ -28,22 +28,24 @@ if __name__ == '__main__':
     experiments = conn.experiments().fetch()
     if len(experiments.data) > 0:
         experiment = experiments.data[0]
-    # experiment = conn.experiments().create(
-    #     name='RL Optimization (Python)',
-    #     # Define which parameters you would like to tune
-    #     parameters=[
-    #         dict(name='dropout', type='double', bounds=dict(min=0.0, max=1.0)),
-    #         dict(name='gamma', type='double', bounds=dict(min=0.0, max=1.0)),
-    #         dict(name='lr', type='double', bounds=dict(min=0.0000001, max=0.1)),
-    #         dict(name='positive_reward', type='int', bounds=dict(min=1, max=10)),
-    #         dict(name='negetive_reward', type='int', bounds=dict(min=-10, max=0)),
-    #     ],
-    #     metrics=[dict(name='function_value')],
-    #     parallel_bandwidth=1,
-    #     # Define an Observation Budget for your experiment
-    #     observation_budget=5,
-    # )
-    # print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
+        print("Load experiment: https://app.sigopt.com/experiment/" + experiment.id)
+    else:
+        experiment = conn.experiments().create(
+            name='RL Optimization (Python)',
+            # Define which parameters you would like to tune
+            parameters=[
+                dict(name='dropout', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='gamma', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='lr', type='double', bounds=dict(min=0.0000001, max=0.1)),
+                # dict(name='positive_reward', type='int', bounds=dict(min=1, max=10)),
+                dict(name='negetive_reward', type='int', bounds=dict(min=-10, max=0)),
+            ],
+            metrics=[dict(name='function_value')],
+            parallel_bandwidth=1,
+            # Define an Observation Budget for your experiment
+            observation_budget=5,
+        )
+        print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
 
     args = parse_args()
     lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
