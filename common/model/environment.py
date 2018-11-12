@@ -30,7 +30,7 @@ class Environment:
         return output
 
     def is_done(self):
-        return self.seq_counter == self.input_seq_size + 1  # or np.sum(self.action_seq) > 2
+        return self.seq_counter == self.input_seq_size + 1  or sum(self.action_seq[-3:]) > 2
 
     def update_state(self, action, new_token):
         return torch.cat((torch.LongTensor([action]), new_token))
@@ -42,27 +42,30 @@ class Environment:
         self.action_seq.append(action)
         is_done = self.is_done()
         if is_done:
-            last_tag = 0
-            surfaces = []
-            surface = []
-            for idx, tag in enumerate(self.action_seq):
-                if tag == 1:
-                    if last_tag == 1:
-                        surface.append(self.input_seq[idx])
-                    else:
-                        surface = [self.input_seq[idx]]
-                elif tag == 0:
-                    if len(surface) > 1:
-                        surfaces.append(surface)
-                        surface = []
-                last_tag = tag
-            if len(surface) > 1:
-                surfaces.append(surface)
-
-            score, mrr = self.linker.best_ranks(surfaces, qarow, k)
-
-            if score < 0.6:
-                reward = score * 10 * self.negative_reward
+            if len(self.action_seq) != len(self.input_seq):
+                reward = self.negative_reward
             else:
-                reward = score * 10 * self.positive_reward
+                last_tag = 0
+                surfaces = []
+                surface = []
+                for idx, tag in enumerate(self.action_seq):
+                    if tag == 1:
+                        if last_tag == 1:
+                            surface.append(self.input_seq[idx])
+                        else:
+                            surface = [self.input_seq[idx]]
+                    elif tag == 0:
+                        if len(surface) > 1:
+                            surfaces.append(surface)
+                            surface = []
+                    last_tag = tag
+                if len(surface) > 1:
+                    surfaces.append(surface)
+
+                score, mrr = self.linker.best_ranks(surfaces, qarow, k)
+                reward = score
+                # if score < 0.6:
+                #     reward = score * 10 * self.negative_reward
+                # else:
+                #    reward = score * 10 * self.positive_reward
         return self.state, reward, is_done, mrr
