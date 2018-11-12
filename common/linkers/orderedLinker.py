@@ -31,10 +31,15 @@ class OrderedLinker(UnorderedLinker):
             else:
                 used_relations.append(item[0])
                 used_candidates.append(item[1])
-                scores.append(item[2])
+                scores.append(item[2] * 1.0 / len(surfaces[item[1]]))
                 if item[3] <= k:
                     rank.append(item[3])
         max_len = max(len(qarow.sparql.relations), len(surfaces))
         if k > 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
+        # if len(qarow.normalized_question) > len(surfaces[0]):
+        #     print(qarow.question,
+        #           qarow.normalized_question,
+        #           [self.dataset.vocab.convertToLabels(item) for item in surfaces],
+        #           [rel.raw_uri for rel in qarow.sparql.relations])
         return sum(scores) / max_len, mrr

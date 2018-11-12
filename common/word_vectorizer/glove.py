@@ -2,8 +2,6 @@ from common.word_vectorizer.wordVectorizer import WordVectorizer
 from common.vocab import Vocab
 import torch
 import os
-import numpy as np
-import ujson as json
 
 
 class Glove(WordVectorizer):
@@ -64,7 +62,7 @@ class Glove(WordVectorizer):
         return vocab, vectors
 
     def decode(self, word_seq):
-        word_seq = [word for word in word_seq.lower().split() if word != '<ent>']
+        word_seq = [word for word in word_seq.lower().split()]
         output = torch.zeros(len(word_seq), self.word_size)  # .normal_(-0.05, 0.05)
         for idx, word in enumerate(word_seq):
             if word in self.dataset_vocab.labelToIdx:
