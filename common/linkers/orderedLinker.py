@@ -1,3 +1,4 @@
+import logging
 from common.linkers.unorderedLinker import UnorderedLinker
 
 
@@ -5,6 +6,7 @@ class OrderedLinker(UnorderedLinker):
     def __init__(self, rel2id_path, core_chains_path, sorter, dataset):
         super(OrderedLinker, self).__init__(rel2id_path, core_chains_path, dataset)
         self.sorter = sorter
+        self.logger = logging.getLogger('main')
 
     def link(self, surface, question):
         unordered_results = super(OrderedLinker, self).link(surface, question)
@@ -31,10 +33,16 @@ class OrderedLinker(UnorderedLinker):
             else:
                 used_relations.append(item[0])
                 used_candidates.append(item[1])
-                scores.append(item[2])
+                scores.append(item[2] * 1.0 / len(surfaces[item[1]]))
                 if item[3] <= k:
                     rank.append(item[3])
         max_len = max(len(qarow.sparql.relations), len(surfaces))
         if k > 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
+        # if len(qarow.normalized_question) > len(surfaces[0]):
+        self.logger.debug([qarow.question,
+                           qarow.normalized_question,
+                           [self.dataset.vocab.convertToLabels(item) for item in surfaces],
+                           [rel.raw_uri for rel in qarow.sparql.relations]])
+
         return sum(scores) / max_len, mrr
