@@ -42,7 +42,10 @@ class Runner:
                                        negative_reward=args.negative_reward)
 
     def load_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
-        checkpoint = torch.load(checkpoint_filename)
+        if torch.cuda.is_available():
+            checkpoint = torch.load(checkpoint_filename)
+        else:
+            checkpoint = torch.load(checkpoint_filename, map_location=lambda storage, loc: storage)
         self.agent.policy_network.load_state_dict(checkpoint['model'])
 
     def save_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
