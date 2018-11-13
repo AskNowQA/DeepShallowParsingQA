@@ -28,7 +28,7 @@ class Runner:
         policy_network = Policy(vocab_size=lc_quad.vocab.size(),
                                 emb_size=word_vectorizer.word_size,
                                 input_size=word_vectorizer.word_size * 2 + 1,
-                                hidden_size=int(word_vectorizer.word_size * 4),
+                                hidden_size=word_vectorizer.word_size,
                                 output_size=2,
                                 dropout_ratio=args.dropout)
         policy_network.emb.weight.data.copy_(word_vectorizer.emb)

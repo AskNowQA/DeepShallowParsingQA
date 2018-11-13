@@ -21,7 +21,7 @@ class Policy(nn.Module):
     def forward(self, input):
         input = torch.cat((input[0].float().reshape(-1), self.emb(input[1:3]).reshape(-1)))
         output_layer1 = self.activation1(self.layer1(input))
-        # output_layer1 = self.dropout(output_layer1)
+        output_layer1 = self.dropout(output_layer1)
         output_layer2 = self.activation2(self.layer2(output_layer1))
         output_layer3 = self.activation3(self.layer3(output_layer2))
 
