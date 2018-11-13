@@ -1,6 +1,5 @@
 from common.dataset.container.sparql import SPARQL
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 
 
 class QARow:
