@@ -55,11 +55,11 @@ class Environment:
                         else:
                             surface = [self.input_seq[idx]]
                     elif tag == 0:
-                        if len(surface) > 1:
+                        if len(surface) > 0:
                             surfaces.append(surface)
                             surface = []
                     last_tag = tag
-                if len(surface) > 1:
+                if len(surface) > 0:
                     surfaces.append(surface)
 
                 score, mrr = self.linker.best_ranks(surfaces, qarow, k)
