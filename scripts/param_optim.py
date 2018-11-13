@@ -34,8 +34,8 @@ if __name__ == '__main__':
             name='RL Optimization (Python)',
             # Define which parameters you would like to tune
             parameters=[
-                dict(name='dropout', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='gamma', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='dropout', type='double', bounds=dict(min=0.0, max=0.7)),
+                dict(name='gamma', type='double', bounds=dict(min=0.6, max=1.0)),
                 dict(name='lr', type='double', bounds=dict(min=0.0000001, max=0.1)),
                 # dict(name='positive_reward', type='int', bounds=dict(min=1, max=10)),
                 dict(name='negetive_reward', type='int', bounds=dict(min=-10, max=0)),
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             metrics=[dict(name='function_value')],
             parallel_bandwidth=1,
             # Define an Observation Budget for your experiment
-            observation_budget=5,
+            observation_budget=100,
         )
         print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
 
