@@ -13,7 +13,6 @@ def parse_args():
     parser.add_argument('--batchsize', default=100, type=int, help='batchsize for optimizer updates')
     parser.add_argument('--positive_reward', default=1, type=float, help='positive reward')
     parser.add_argument('--negative_reward', default=-0.5, type=float, help='negative reward')
-    parser.add_argument('--sim', default='str', help='similarity (default: str) str or emb')
     parser.add_argument('--remove_entity', dest='remove_entity', action='store_true')
     parser.add_argument('--remove_stop_words', dest='remove_stop_words', action='store_true')
     args = parser.parse_args()

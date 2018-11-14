@@ -1,6 +1,7 @@
 import pickle as pk
 import ujson as json
 
+
 class UnorderedLinker:
     def __init__(self, rel2id_path, core_chains_path, dataset):
         self.dataset = dataset
@@ -29,5 +30,5 @@ class UnorderedLinker:
     def link_all(self, surfaces, qarow):
         output = []
         for surface in surfaces:
-            output.append(self.link(' '.join(self.dataset.vocab.convertToLabels(surface)), qarow.question))
+            output.append(self.link(surface, qarow.question))
         return output

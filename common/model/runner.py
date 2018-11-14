@@ -11,16 +11,13 @@ from common.linkers.orderedLinker import OrderedLinker
 from common.linkers.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.embeddingSimilaritySorter import EmbeddingSimilaritySorter
 
+
 class Runner:
     def __init__(self, lc_quad, args):
         joint_vocab = lc_quad.vocab
         joint_vocab.loadFile(config['lc_quad']['rel_vocab'])
         word_vectorizer = Glove(joint_vocab, config['glove_path'], config['lc_quad']['emb'])
-        if args.sim == 'str':
-            sorter = StringSimilaritySorter()
-        else:
-            sorter = EmbeddingSimilaritySorter(word_vectorizer)
-        linker = OrderedLinker(sorter=sorter,
+        linker = OrderedLinker(sorters=[StringSimilaritySorter(), EmbeddingSimilaritySorter(word_vectorizer)],
                                rel2id_path=config['lc_quad']['rel2id'],
                                core_chains_path=config['lc_quad']['core_chains'],
                                dataset=lc_quad)
