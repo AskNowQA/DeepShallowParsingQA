@@ -15,7 +15,8 @@ class OrderedLinker(UnorderedLinker):
 
     def best_ranks(self, surfaces, qarow, k):
         mrr = 0
-        if any([self.dataset.vocab.special[0] in item for item in surfaces]):
+        if (len(surfaces) != len(qarow.sparql.relations)) or any(
+                [self.dataset.vocab.special[0] in item for item in surfaces]):
             return -1, mrr
         output = self.link_all(surfaces, qarow)
         if len(output) == 0:
@@ -36,7 +37,7 @@ class OrderedLinker(UnorderedLinker):
                 used_relations.append(item[0])
                 used_candidates.append(item[1])
                 tmp = len(item[0].tokens) / (abs(len(surfaces[item[1]]) - len(item[0].tokens)) + 1)
-                scores.append(item[2] / tmp)
+                scores.append(item[2] * tmp)
                 if item[3] <= k:
                     rank.append(item[3])
         max_len = max(len(qarow.sparql.relations), len(surfaces))
