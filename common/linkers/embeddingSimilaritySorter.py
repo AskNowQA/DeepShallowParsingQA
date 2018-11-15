@@ -31,6 +31,8 @@ class EmbeddingSimilaritySorter:
         candidates_similarity = candidates_similarity.data
         if torch.cuda.is_available():
             candidates_similarity = candidates_similarity.cpu()
-        sorted_idx = np.argsort(candidates_similarity.numpy())[::-1]
+        candidates_similarity = candidates_similarity.numpy()
+        sorted_idx = np.argsort(candidates_similarity)[::-1]
+        sorted_idx = [idx for idx in sorted_idx if candidates_similarity[idx] > 0.4]
         sorted = [candidates[idx] for idx in sorted_idx]
         return sorted
