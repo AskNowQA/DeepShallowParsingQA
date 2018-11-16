@@ -19,7 +19,9 @@ class Policy(nn.Module):
         self.activation3 = nn.Softmax(dim=0)
 
     def forward(self, input):
-        input = torch.cat((input[0].float().reshape(-1), self.emb(input[1:3]).reshape(-1)))
+        input = torch.cat((input[0].float().reshape(-1),
+                           input[1].float().reshape(-1),
+                           self.emb(input[2:4]).reshape(-1)))
         output_layer1 = self.activation1(self.layer1(input))
         output_layer1 = self.dropout(output_layer1)
         output_layer2 = self.activation2(self.layer2(output_layer1))
