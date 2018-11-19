@@ -25,9 +25,16 @@ class Environment:
     def next_token(self):
         idx = self.seq_counter % self.input_seq_size
         if idx == 0:
-            output = torch.cat((torch.LongTensor([0]), self.input_seq[idx].reshape(-1)))
+            prev_token = torch.LongTensor([0])
         else:
-            output = self.input_seq[idx - 1:idx + 1].reshape(-1)
+            prev_token = self.input_seq[idx - 1].reshape(-1)
+
+        current_token = self.input_seq[idx].reshape(-1)
+        if idx + 1 == self.input_seq_size:
+            next_token = torch.LongTensor([0])
+        else:
+            next_token = self.input_seq[idx + 1].reshape(-1)
+        output = torch.cat((prev_token, current_token, next_token))
         self.seq_counter += 1
         return output
 
