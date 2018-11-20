@@ -13,6 +13,8 @@ class EmbeddingSimilaritySorter:
             self.emb.cuda()
 
     def sort(self, surface, question, candidates):
+        if len(candidates) == 0:
+            return []
         surface_embeddings = self.word_vectorizer.decode(surface)
         surface_embeddings = torch.mean(surface_embeddings, dim=0).reshape(1, -1)
 
