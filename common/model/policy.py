@@ -7,6 +7,7 @@ class Policy(nn.Module):
         super(Policy, self).__init__()
 
         self.emb = nn.Embedding(vocab_size, emb_size, padding_idx=0, sparse=False)
+        self.emb.weight.requires_grad = False
 
         self.layer1 = nn.Linear(input_size, hidden_size, bias=False)
         self.activation1 = nn.ReLU()

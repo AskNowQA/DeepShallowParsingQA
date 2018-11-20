@@ -32,7 +32,8 @@ class Runner:
         self.agent = Agent(number_of_relations=2,
                            gamma=args.gamma,
                            policy_network=policy_network,
-                           policy_optimizer=torch.optim.Adam(policy_network.parameters(), lr=args.lr))
+                           policy_optimizer=torch.optim.Adam(
+                               filter(lambda p: p.requires_grad, policy_network.parameters()), lr=args.lr))
 
         self.environment = Environment(linker=linker,
                                        positive_reward=args.positive_reward,
@@ -64,6 +65,7 @@ class Runner:
                 if idx % args.batchsize == 0:
                     self.agent.policy_optimizer.step()
                     self.agent.policy_network.zero_grad()
+
             self.agent.policy_optimizer.step()
             self.agent.policy_network.zero_grad()
 
