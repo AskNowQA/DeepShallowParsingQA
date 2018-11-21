@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from tqdm import tqdm
+import torch.utils.data
 
 from config import config
 from common.word_vectorizer.glove import Glove
@@ -56,9 +57,12 @@ class Runner:
         last_idx = 0
         iter = tqdm(range(args.epochs))
         self.agent.policy_network.zero_grad()
+        batch = torch.utils.data.DataLoader(lc_quad.dataset__, batch_size=len(lc_quad.train_set))#, pin_memory=True)
+        batch = list(batch)[0][0]
         for epoch in iter:
-            for idx, qarow in enumerate(lc_quad.train_set):
-                reward, mrr, loss = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k)
+            for idx, datarow in enumerate(batch):
+                qarow = lc_quad.train_set[idx]
+                reward, mrr, loss = self.step(datarow, qarow, e=args.e, k=args.k) # lc_quad.coded_train_corpus
                 total_reward.append(reward)
                 total_rmm.append(mrr)
                 total_loss.append(float(loss))

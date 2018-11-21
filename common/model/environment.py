@@ -15,10 +15,13 @@ class Environment:
         self.num_surface = 0
 
     def init(self, input_seq):
-        self.input_seq = torch.LongTensor(input_seq)
+        self.input_seq = input_seq # torch.LongTensor(input_seq)
         self.input_seq_size = len(self.input_seq)
         self.seq_counter = 0
-        self.state = torch.cat((torch.LongTensor([0]), torch.LongTensor([0]), self.next_token()))
+        if torch.cuda.is_available():
+            self.state = torch.cat((torch.LongTensor([0]).cuda(), torch.LongTensor([0]).cuda(), self.next_token()))
+        else:
+            self.state = torch.cat((torch.LongTensor([0]), torch.LongTensor([0]), self.next_token()))
         self.action_seq = []
         self.num_surface = 0
 
@@ -29,11 +32,18 @@ class Environment:
         else:
             prev_token = self.input_seq[idx - 1].reshape(-1)
 
+        try:
+            current_token = self.input_seq[idx].reshape(-1)
+        except:
+            print(self.input_seq, self.input_seq[idx])
         current_token = self.input_seq[idx].reshape(-1)
         if idx + 1 == self.input_seq_size:
             next_token = torch.LongTensor([0])
         else:
             next_token = self.input_seq[idx + 1].reshape(-1)
+        if torch.cuda.is_available():
+            prev_token = prev_token.cuda()
+            next_token = next_token.cuda()
         output = torch.cat((prev_token, current_token, next_token))
         self.seq_counter += 1
         return output
@@ -42,8 +52,11 @@ class Environment:
         return self.seq_counter == self.input_seq_size + 1 or sum(self.action_seq[-3:]) > 2
 
     def update_state(self, action, new_token):
-        return torch.cat((torch.LongTensor([self.num_surface]), torch.LongTensor([action]), new_token))
-
+        if torch.cuda.is_available():
+            return torch.cat((torch.LongTensor([self.num_surface]).cuda(), torch.LongTensor([action]).cuda(), new_token))
+        else:
+            return torch.cat((torch.LongTensor([self.num_surface]), torch.LongTensor([action]), new_token))
+        
     def step(self, action, qarow, train, k):
         reward = 0
         mrr = 0

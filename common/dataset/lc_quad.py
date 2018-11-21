@@ -21,6 +21,11 @@ class LC_QuAD:
 
         self.coded_train_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.train_corpus]
         self.coded_test_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.test_corpus]
+        self.coded_train_corpus = torch.zeros((len(self.coded_train_corpus),4)).long().random_(1,10)
+        if torch.cuda.is_available():
+            print('cuda')
+            self.coded_train_corpus = self.coded_train_corpus.cuda()
+        self.dataset__ = torch.utils.data.TensorDataset(self.coded_train_corpus)
 
     def __load_dataset(self, dataset_path, remove_entity_mention, remove_stop_words):
         if not os.path.isfile(dataset_path):
@@ -35,7 +40,7 @@ class LC_QuAD:
                        for item in
                        raw_dataset]
             # if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
-            dataset = [row for row in dataset if len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1]
+            # dataset = [row for row in dataset if len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1]
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus
 
