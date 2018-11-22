@@ -44,7 +44,7 @@ class OrderedLinker(UnorderedLinker):
                 if item[3] <= k:
                     rank.append(item[3])
         max_len = max(len(qarow.sparql.relations), len(surfaces))
-        if k > 0 and max_len > 0:
+        if k >= 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
         self.logger.debug([qarow.question,
                            qarow.normalized_question,
