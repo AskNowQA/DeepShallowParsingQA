@@ -53,7 +53,6 @@ class Runner:
     def train(self, lc_quad, args, checkpoint_filename=config['checkpoint_path']):
         total_reward, total_rmm, total_loss = [], [], []
         max_rmm, max_rmm_index = 0, -1
-        last_idx = 0
         iter = tqdm(range(args.epochs))
         self.agent.policy_network.zero_grad()
         for epoch in iter:
@@ -61,7 +60,7 @@ class Runner:
                 reward, mrr, loss = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k)
                 total_reward.append(reward)
                 total_rmm.append(mrr)
-                total_loss.append(float(loss))
+                total_loss.append(loss)
                 if idx % args.batchsize == 0:
                     self.agent.policy_optimizer.step()
                     self.agent.policy_network.zero_grad()
@@ -70,9 +69,9 @@ class Runner:
             self.agent.policy_network.zero_grad()
 
             if epoch > 0 and epoch % 10 == 0:
-                mean_rmm = np.mean(total_rmm[last_idx:])
-                print(np.mean(total_reward[last_idx:]), mean_rmm, np.mean(total_loss[last_idx:]))
-                last_idx = len(total_reward)
+                mean_rmm = np.mean(total_rmm)
+                print(np.mean(total_reward), mean_rmm, np.mean(total_loss))
+                total_reward, total_rmm, total_loss = [], [], []
                 self.save_checkpoint(checkpoint_filename)
                 if mean_rmm > max_rmm:
                     max_rmm = mean_rmm
@@ -81,8 +80,8 @@ class Runner:
                     if epoch >= max_rmm_index + 30:
                         iter.close()
                         break
-        if len(total_reward[last_idx:]) > 0:
-            print(np.mean(total_reward[last_idx:]), np.mean(total_rmm[last_idx:]), np.mean(total_loss[last_idx:]))
+        if len(total_reward) > 0:
+            print(np.mean(total_reward), np.mean(total_rmm), np.mean(total_loss))
 
     def test(self, lc_quad, args):
         total_rmm = []
@@ -100,8 +99,8 @@ class Runner:
         self.environment.init(input)
         state = self.environment.state
         while True:
-            action_dist, action, action_log_prob = self.agent.select_action(state, e)
-            new_state, reward, done, mrr = self.environment.step(action, qarow, train, k)
+            action, action_log_prob = self.agent.select_action(state, e)
+            new_state, reward, done, mrr = self.environment.step(action, qarow, k)
             running_reward += reward
             rewards.append(reward)
             action_log_probs.append(action_log_prob)
@@ -111,4 +110,5 @@ class Runner:
                     loss = self.agent.backward(rewards, action_log_probs)
                 total_reward.append(running_reward)
                 break
+        del action_log_prob
         return total_reward, mrr, loss

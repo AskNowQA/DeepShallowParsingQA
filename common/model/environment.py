@@ -44,7 +44,7 @@ class Environment:
     def update_state(self, action, new_token):
         return torch.cat((torch.LongTensor([self.num_surface]), torch.LongTensor([action]), new_token))
 
-    def step(self, action, qarow, train, k):
+    def step(self, action, qarow, k):
         reward = 0
         mrr = 0
         if action == 1:
