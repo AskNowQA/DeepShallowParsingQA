@@ -1,3 +1,4 @@
+*.lprof
 data/**
 
 .DS_Store
