@@ -1,5 +1,6 @@
 import pickle as pk
 import ujson as json
+from common.utils import *
 
 
 class UnorderedLinker:
@@ -9,14 +10,16 @@ class UnorderedLinker:
             self.rel2id = pk.load(f_h, encoding='latin1')
             self.id2rel = {v[0]: ([k] + v[1:]) for k, v in self.rel2id.items()}
         with open(core_chains_path, 'rb') as f_h:
-            self.core_chains = json.load(f_h)
+            tmp = json.load(f_h)
+            self.core_chains = {item['parsed-data']['corrected_question']: item for item in tmp}
 
+    @profile
     def __find_core_chain(self, question):
-        for item in self.core_chains:
-            if item['parsed-data']['corrected_question'] == question:
-                return item
+        if question in self.core_chains:
+            return self.core_chains[question]
         return None
 
+    @profile
     def link(self, surface, question):
         core_chain = self.__find_core_chain(question)
         if core_chain is not None:
@@ -27,6 +30,7 @@ class UnorderedLinker:
             results = [self.id2rel[id] for id in set(hop_1 + hop_2)]
             return results
 
+    @profile
     def link_all(self, surfaces, qarow):
         output = []
         for surface in surfaces:
