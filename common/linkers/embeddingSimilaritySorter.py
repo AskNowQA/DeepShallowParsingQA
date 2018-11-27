@@ -33,8 +33,9 @@ class EmbeddingSimilaritySorter:
         candidates_embeddings = self.emb(candidates_coded)
         candidates_embeddings_mean = torch.sum(candidates_embeddings, dim=1) / lens
         candidates_similarity = torch.nn.functional.cosine_similarity(surface_embeddings, candidates_embeddings_mean)
-        candidates_similarity = candidates_similarity.data
-        candidates_similarity = candidates_similarity.numpy()
+        if candidates_similarity.is_cuda:
+            candidates_similarity = candidates_similarity.cpu()
+        candidates_similarity = candidates_similarity.data.numpy()
         threshold = candidates_similarity > 0.4
         filtered_candidates = candidates[threshold]
         sorted_idx = np.argsort(candidates_similarity[threshold])[::-1]
