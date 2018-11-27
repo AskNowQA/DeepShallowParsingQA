@@ -29,6 +29,5 @@ if __name__ == '__main__':
         logger.setLevel(logging.DEBUG)
         runner.load_checkpoint()
     else:
-
         runner.train(lc_quad, args)
     runner.test(lc_quad, args)

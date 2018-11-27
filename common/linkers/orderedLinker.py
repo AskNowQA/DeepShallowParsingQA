@@ -1,6 +1,6 @@
 import logging
 from common.linkers.unorderedLinker import UnorderedLinker
-
+from common.utils import *
 
 class OrderedLinker(UnorderedLinker):
     def __init__(self, rel2id_path, core_chains_path, sorters, dataset):
@@ -8,11 +8,13 @@ class OrderedLinker(UnorderedLinker):
         self.sorters = sorters
         self.logger = logging.getLogger('main')
 
+    @profile
     def link(self, surface, question):
         string_surface = ' '.join(self.dataset.vocab.convertToLabels(surface))
         unordered_results = super(OrderedLinker, self).link(string_surface, question)
         return [[surface, sorter.sort(string_surface, question, unordered_results)] for sorter in self.sorters]
 
+    @profile
     def best_ranks(self, surfaces, qarow, k):
         mrr = 0
         if (len(surfaces) != len(qarow.sparql.relations)) or any(

@@ -3,20 +3,18 @@ import numpy as np
 from tqdm import tqdm
 
 from config import config
-from common.word_vectorizer.glove import Glove
 from common.model.agent import Agent
 from common.model.policy import Policy
 from common.model.environment import Environment
 from common.linkers.orderedLinker import OrderedLinker
 from common.linkers.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.embeddingSimilaritySorter import EmbeddingSimilaritySorter
+from common.utils import *
 
 
 class Runner:
     def __init__(self, lc_quad, args):
-        joint_vocab = lc_quad.vocab
-        joint_vocab.loadFile(config['lc_quad']['rel_vocab'])
-        word_vectorizer = Glove(joint_vocab, config['glove_path'], config['lc_quad']['emb'])
+        word_vectorizer = lc_quad.word_vectorizer
         linker = OrderedLinker(sorters=[StringSimilaritySorter(), EmbeddingSimilaritySorter(word_vectorizer)],
                                rel2id_path=config['lc_quad']['rel2id'],
                                core_chains_path=config['lc_quad']['core_chains'],
@@ -49,6 +47,7 @@ class Runner:
         checkpoint = {'model': self.agent.policy_network.state_dict()}
         torch.save(checkpoint, checkpoint_filename)
 
+    @profile
     def train(self, lc_quad, args, checkpoint_filename=config['checkpoint_path']):
         total_reward, total_rmm, total_loss = [], [], []
         max_rmm, max_rmm_index = 0, -1
@@ -91,6 +90,7 @@ class Runner:
         print(total)
         return total
 
+    @profile
     def step(self, input, qarow, e, train=True, k=0):
         rewards, action_log_probs, total_reward = [], [], []
         loss = 0
@@ -99,7 +99,7 @@ class Runner:
         state = self.environment.state
         while True:
             action_dist, action, action_log_prob = self.agent.select_action(state, e)
-            new_state, reward, done, mrr = self.environment.step(action, qarow, train, k)
+            new_state, reward, done, mrr = self.environment.step(action, qarow, k)
             running_reward += reward
             rewards.append(reward)
             action_log_probs.append(action_log_prob)

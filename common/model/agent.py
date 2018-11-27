@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+from common.utils import *
 
 class Agent:
     def __init__(self, number_of_relations, gamma, policy_network, policy_optimizer):
@@ -12,6 +12,7 @@ class Agent:
         if self.cuda:
             self.policy_network.cuda()
 
+    @profile
     def select_action(self, state, e):
         if self.cuda:
             state = state.cuda()
@@ -25,6 +26,7 @@ class Agent:
             action = action.cuda()
         return action_dist, action, m.log_prob(action)
 
+    @profile
     def backward(self, rewards, action_log_probs):
         label_target = False
         if not label_target:
@@ -37,6 +39,7 @@ class Agent:
             loss.backward()
         return loss
 
+    @profile
     def discount_rewards(self, r):
         discounted_r = torch.zeros((len(r)))
         running_add = 0

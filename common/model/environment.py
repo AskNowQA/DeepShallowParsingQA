@@ -1,4 +1,5 @@
 import torch
+from common.utils import *
 
 
 class Environment:
@@ -14,14 +15,16 @@ class Environment:
         self.action_seq = []
         self.num_surface = 0
 
+    @profile
     def init(self, input_seq):
         self.input_seq = torch.LongTensor(input_seq)
         self.input_seq_size = len(self.input_seq)
         self.seq_counter = 0
-        self.state = torch.cat((torch.LongTensor([0]), torch.LongTensor([0]), self.next_token()))
+        self.state = torch.cat((torch.LongTensor([0, 0]), self.next_token()))
         self.action_seq = []
         self.num_surface = 0
 
+    @profile
     def next_token(self):
         idx = self.seq_counter % self.input_seq_size
         if idx == 0:
@@ -41,10 +44,12 @@ class Environment:
     def is_done(self):
         return self.seq_counter == self.input_seq_size + 1 or sum(self.action_seq[-3:]) > 2
 
+    @profile
     def update_state(self, action, new_token):
         return torch.cat((torch.LongTensor([self.num_surface]), torch.LongTensor([action]), new_token))
 
-    def step(self, action, qarow, train, k):
+    @profile
+    def step(self, action, qarow, k):
         reward = 0
         mrr = 0
         if action == 1:
