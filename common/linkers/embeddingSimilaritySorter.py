@@ -20,10 +20,11 @@ class EmbeddingSimilaritySorter:
         surface_embeddings = self.word_vectorizer.decode(surface)
         surface_embeddings = torch.mean(surface_embeddings, dim=0).reshape(1, -1)
 
-        tmp = [item[5] for item in candidates]
-        lengths = [item[6] for item in candidates]
-        lens = torch.FloatTensor(lengths).reshape(-1, 1)
-        candidates_coded = torch.stack(tmp)
+        candidates = np.array(candidates, dtype=object)
+        tmp = candidates[:, 5]
+        lengths = candidates[:, 6]
+        lens = torch.FloatTensor(lengths.astype(float)).reshape(-1, 1)
+        candidates_coded = torch.stack(tmp.tolist())
 
         if torch.cuda.is_available():
             surface_embeddings = surface_embeddings.cuda()
@@ -33,10 +34,9 @@ class EmbeddingSimilaritySorter:
         candidates_embeddings_mean = torch.sum(candidates_embeddings, dim=1) / lens
         candidates_similarity = torch.nn.functional.cosine_similarity(surface_embeddings, candidates_embeddings_mean)
         candidates_similarity = candidates_similarity.data
-        if torch.cuda.is_available():
-            candidates_similarity = candidates_similarity.cpu()
         candidates_similarity = candidates_similarity.numpy()
-        sorted_idx = np.argsort(candidates_similarity)[::-1]
-        sorted_idx = [idx for idx in sorted_idx if candidates_similarity[idx] > 0.4]
-        sorted = [candidates[idx] for idx in sorted_idx]
-        return sorted
+        threshold = candidates_similarity > 0.4
+        filtered_candidates = candidates[threshold]
+        sorted_idx = np.argsort(candidates_similarity[threshold])[::-1]
+        sorted_candidates = filtered_candidates[sorted_idx]
+        return sorted_candidates
