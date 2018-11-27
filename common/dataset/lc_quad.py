@@ -1,11 +1,13 @@
 from common.dataset.container.qarow import QARow
+from common.word_vectorizer.glove import Glove
 from common.vocab import Vocab
 from config import config
 
+import torch
+import torch.nn as nn
 import ujson as json
 import os
 import pickle as pk
-import torch
 
 
 class LC_QuAD:
@@ -16,11 +18,13 @@ class LC_QuAD:
         self.corpus = self.train_corpus + self.test_corpus
         if not os.path.isfile(vocab_path):
             self.__build_vocab(self.corpus, vocab_path)
-        self.__load_candidate_relations(vocab_path)
         self.vocab = Vocab(filename=vocab_path, data=['<ent>'])
+        self.word_vectorizer = Glove(self.vocab, config['glove_path'], config['lc_quad']['emb'])
+        # self.__update_relations_emb()
 
         self.coded_train_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.train_corpus]
         self.coded_test_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.test_corpus]
+        self.vocab_path = vocab_path
 
     def __load_dataset(self, dataset_path, remove_entity_mention, remove_stop_words):
         if not os.path.isfile(dataset_path):
@@ -39,36 +43,58 @@ class LC_QuAD:
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus
 
-    def __load_candidate_relations(self, vocab_path):
+    def __load_candidate_relations(self):
         with open(config['lc_quad']['rel2id'], 'rb') as f_h:
             rel2id = pk.load(f_h, encoding='latin1')
 
-        if os.path.isfile(config['lc_quad']['rel_vocab']):
-            vocab = Vocab(filename=vocab_path, data=['<ent>'])
-            vocab.loadFile(config['lc_quad']['rel_vocab'])
-        else:
-            vocab = set()
-            for item_id, item in rel2id.items():
-                words = [word.lower().replace('.', '') for word in item[2]]
-                vocab |= set(words)
-            print(len(vocab))
-            with open(config['lc_quad']['rel_vocab'], 'w') as f:
-                for token in sorted(vocab):
-                    f.write(token + '\n')
-            vocab = Vocab(filename=vocab_path, data=['<ent>'])
-            vocab.loadFile(config['lc_quad']['rel_vocab'])
+        vocab = set()
+        for item_id, item in rel2id.items():
+            words = [word.lower().replace('.', '') for word in item[2]]
+            vocab |= set(words)
+
+        return vocab
+
+    def __update_relations_emb(self):
+        emb_shape = self.word_vectorizer.emb.shape
+        emb = nn.Embedding(emb_shape[0], emb_shape[1], padding_idx=0, sparse=False)
+        emb.weight.data.copy_(self.word_vectorizer.emb)
+        if torch.cuda.is_available():
+            emb.cuda()
+
+        with open(config['lc_quad']['rel2id'], 'rb') as f_h:
+            rel2id = pk.load(f_h, encoding='latin1')
 
         ## Need to fix cases where there are non-alphabet chars in the label
+        max_length = 3
         for item_id, item in rel2id.items():
-            idxs = [vocab.getIndex(word.lower().replace('.', '')) for word in item[2]]
-            idxs = [id for id in idxs if id is not None]
-            idxs = torch.LongTensor(idxs)
-            if len(item) >= 6:
-                item[5] = idxs
-                if len(item) >= 7:
-                    del item[6:]
+            if len(item[2]) > max_length:
+                idxs = []
             else:
-                item.append(idxs)
+                idxs = [self.vocab.getIndex(word.lower().replace('.', '')) for word in item[2]]
+                idxs = [id for id in idxs if id is not None]
+            length = len(idxs)
+            if length == 0:
+                length = 1
+            if len(idxs) < max_length:
+                idxs = idxs + [0] * (max_length - len(idxs))
+            idxs = torch.LongTensor(idxs)
+            item[5] = idxs
+            if len(item) == 6:
+                item.append(length)
+            else:
+                item[6] = length
+        # lengths = [len(item) for item in tmp]
+        # lengths = torch.FloatTensor(lengths).reshape(-1, 1)
+        # candidates_coded = torch.zeros([len(tmp), max_length - 1], dtype=torch.long)
+        # for idx, item in enumerate(tmp):
+        #     candidates_coded[idx][:len(item)] = item
+        # if torch.cuda.is_available():
+        #     candidates_coded = candidates_coded.cuda()
+        #     lengths = lengths.cuda()
+        # candidates_embeddings = emb(candidates_coded)
+        # candidates_embeddings_mean = torch.sum(candidates_embeddings, dim=1) / lengths
+        # for idx, (item_id, item) in enumerate(rel2id.items()):
+        #     item[5] = candidates_embeddings_mean[idx]
 
         with open(config['lc_quad']['rel2id'], 'wb') as f_h:
             pk.dump(rel2id, f_h)
@@ -77,6 +103,8 @@ class LC_QuAD:
         vocab = set()
         for tokens in lines:
             vocab |= set(tokens)
+        relations_vocab = self.__load_candidate_relations()
+        vocab |= relations_vocab
         if '<ent>' in vocab:
             vocab.remove('<ent>')
         with open(vocab_path, 'w') as f:

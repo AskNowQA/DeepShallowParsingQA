@@ -17,6 +17,5 @@ config['lc_quad'] = {
     'rel2id': os.path.join(config['lc_quad']['base_path'], 'relations.pickle'),
     'core_chains': os.path.join(config['lc_quad']['base_path'], 'id_big_data.json'),
     'vocab': os.path.join(config['lc_quad']['base_path'], 'dataset.vocab'),
-    'rel_vocab': os.path.join(config['lc_quad']['base_path'], 'dataset_rel.vocab'),
     'emb': os.path.join(config['lc_quad']['base_path'], 'dataset.emb')
 }

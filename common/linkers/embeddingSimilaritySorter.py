@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from common.utils import *
 
 
 class EmbeddingSimilaritySorter:
@@ -12,6 +13,7 @@ class EmbeddingSimilaritySorter:
         if torch.cuda.is_available():
             self.emb.cuda()
 
+    @profile
     def sort(self, surface, question, candidates):
         if len(candidates) == 0:
             return []
@@ -19,10 +21,10 @@ class EmbeddingSimilaritySorter:
         surface_embeddings = torch.mean(surface_embeddings, dim=0).reshape(1, -1)
 
         tmp = [item[5] for item in candidates]
-        lens = torch.FloatTensor([len(item) for item in tmp]).reshape(-1, 1)
-        candidates_coded = torch.zeros([len(tmp), max([len(item) for item in tmp])], dtype=torch.long)
-        for idx, item in enumerate(tmp):
-            candidates_coded[idx][:len(item)] = item
+        lengths = [item[6] for item in candidates]
+        lens = torch.FloatTensor(lengths).reshape(-1, 1)
+        candidates_coded = torch.stack(tmp)
+
         if torch.cuda.is_available():
             surface_embeddings = surface_embeddings.cuda()
             candidates_coded = candidates_coded.cuda()
