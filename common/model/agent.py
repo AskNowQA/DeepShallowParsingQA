@@ -24,7 +24,8 @@ class Agent:
             action = m.sample()
         if self.cuda:
             action = action.cuda()
-        return action_dist, action, m.log_prob(action)
+        del action_dist
+        return action, m.log_prob(action)
 
     @profile
     def backward(self, rewards, action_log_probs):
@@ -37,7 +38,9 @@ class Agent:
                 action_log_probs = action_log_probs.cuda()
             loss = -torch.dot(rewards, action_log_probs)
             loss.backward()
-        return loss
+        loss_value = float(loss)
+        del loss
+        return loss_value
 
     @profile
     def discount_rewards(self, r):
