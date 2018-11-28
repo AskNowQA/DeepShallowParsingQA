@@ -13,7 +13,6 @@ class UnorderedLinker:
             tmp = json.load(f_h)
             self.core_chains = {item['parsed-data']['corrected_question']: item for item in tmp}
 
-    @profile
     def __find_core_chain(self, question):
         if question in self.core_chains:
             return self.core_chains[question]
@@ -25,9 +24,9 @@ class UnorderedLinker:
         if core_chain is not None:
             hop_1 = core_chain['uri']['hop-1-properties']
             hop_2 = core_chain['uri']['hop-2-properties']
-            hop_1 = [item[1] for item in hop_1]
-            hop_2 = list(set([item[3] for item in hop_2]))
-            results = [self.id2rel[id] for id in set(hop_1 + hop_2)]
+            hop_1 = set([item[1] for item in hop_1])
+            hop_2 = set([item[3] for item in hop_2])
+            results = [self.id2rel[id] for id in hop_1 | hop_2]
             return results
 
     @profile

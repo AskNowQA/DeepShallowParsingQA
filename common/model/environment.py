@@ -15,7 +15,6 @@ class Environment:
         self.action_seq = []
         self.num_surface = 0
 
-    @profile
     def init(self, input_seq):
         self.input_seq = torch.LongTensor(input_seq)
         self.input_seq_size = len(self.input_seq)
@@ -24,7 +23,6 @@ class Environment:
         self.action_seq = []
         self.num_surface = 0
 
-    @profile
     def next_token(self):
         idx = self.seq_counter % self.input_seq_size
         if idx == 0:
@@ -46,7 +44,7 @@ class Environment:
 
     @profile
     def update_state(self, action, new_token):
-        return torch.cat((torch.LongTensor([self.num_surface]), torch.LongTensor([action]), new_token))
+        return torch.cat((torch.LongTensor([self.num_surface, action]), new_token))
 
     @profile
     def step(self, action, qarow, k):

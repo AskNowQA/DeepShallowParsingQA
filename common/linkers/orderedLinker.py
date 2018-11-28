@@ -2,6 +2,7 @@ import logging
 from common.linkers.unorderedLinker import UnorderedLinker
 from common.utils import *
 
+
 class OrderedLinker(UnorderedLinker):
     def __init__(self, rel2id_path, core_chains_path, sorters, dataset):
         super(OrderedLinker, self).__init__(rel2id_path, core_chains_path, dataset)
@@ -24,15 +25,16 @@ class OrderedLinker(UnorderedLinker):
         output = [item for tmp in output for item in tmp]
         if len(output) == 0:
             return -1, mrr
+        candidates_dict = [{candidate[0]: idx for idx, candidate in enumerate(candidates[1])} for candidates in output]
         output2 = []
         for relation in qarow.sparql.relations:
             for candidates_idx, candidates in enumerate(output):
                 surface = candidates[0]
                 candidates = candidates[1]
                 number_of_candidates = len(candidates)
-                for idx, candidate in enumerate(candidates):
-                    if candidate[0] == relation.raw_uri:
-                        output2.append([relation, candidates_idx, 1 - idx / number_of_candidates, idx, surface])
+                if relation.raw_uri in candidates_dict[candidates_idx]:
+                    idx = candidates_dict[candidates_idx][relation.raw_uri]
+                    output2.append([relation, candidates_idx, 1 - idx / number_of_candidates, idx, surface])
         output2.sort(key=lambda x: x[2], reverse=True)
         used_relations, used_candidates, scores, rank = [], [], [], []
         for item in output2:
