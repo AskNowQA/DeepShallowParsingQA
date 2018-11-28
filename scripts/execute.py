@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import logging
+import time
 
 from config import config
 from scripts.config_args import parse_args
@@ -12,6 +13,7 @@ torch.manual_seed(6)
 torch.backends.cudnn.deterministic = True
 
 if __name__ == '__main__':
+    start = time.time()
     args = parse_args()
     logger = logging.getLogger('main')
     logger.setLevel(logging.INFO)
@@ -31,3 +33,5 @@ if __name__ == '__main__':
     else:
         runner.train(lc_quad, args)
     runner.test(lc_quad, args)
+    finish = time.time()
+    print('total runtime:', finish - start)
