@@ -16,11 +16,12 @@ class OrderedLinker(UnorderedLinker):
         return [[surface, sorter.sort(string_surface, question, unordered_results)] for sorter in self.sorters]
 
     @profile
-    def best_ranks(self, surfaces, qarow, k):
+    def best_ranks(self, surfaces, qarow, k, train):
         mrr = 0
-        if (len(surfaces) != len(qarow.sparql.relations)) or any(
-                [self.dataset.vocab.special[0] in item for item in surfaces]):
-            return -1, mrr
+        if train:
+            if (len(surfaces) != len(qarow.sparql.relations)) or any(
+                    [self.dataset.vocab.special[0] in item for item in surfaces]):
+                return -1, mrr
         output = self.link_all(surfaces, qarow)
         output = [item for tmp in output for item in tmp]
         if len(output) == 0:
@@ -50,9 +51,9 @@ class OrderedLinker(UnorderedLinker):
         max_len = max(len(qarow.sparql.relations), len(surfaces))
         if k >= 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
-        self.logger.debug([qarow.question,
-                           qarow.normalized_question,
-                           [self.dataset.vocab.convertToLabels(item) for item in surfaces],
-                           [rel.raw_uri for rel in qarow.sparql.relations]])
+        self.logger.debug(qarow.question)
+        self.logger.debug(qarow.normalized_question)
+        self.logger.debug([' '.join(self.dataset.vocab.convertToLabels(item)) for item in surfaces])
+        self.logger.debug([rel.raw_uri for rel in qarow.sparql.relations])
 
         return sum(scores) / max_len, mrr

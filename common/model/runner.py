@@ -56,7 +56,7 @@ class Runner:
         self.agent.policy_network.zero_grad()
         for epoch in iter:
             for idx, qarow in enumerate(lc_quad.train_set):
-                reward, mrr, loss = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k)
+                reward, mrr, loss = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k, train=True)
                 total_reward.append(reward)
                 total_rmm.append(mrr)
                 total_loss.append(loss)
@@ -100,7 +100,7 @@ class Runner:
         state = self.environment.state
         while True:
             action, action_log_prob = self.agent.select_action(state, e)
-            new_state, reward, done, mrr = self.environment.step(action, qarow, k)
+            new_state, reward, done, mrr = self.environment.step(action, qarow, k, train=train)
             running_reward += reward
             rewards.append(reward)
             action_log_probs.append(action_log_prob)

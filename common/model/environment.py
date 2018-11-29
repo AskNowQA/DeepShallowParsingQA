@@ -47,7 +47,7 @@ class Environment:
         return torch.cat((torch.LongTensor([self.num_surface, action]), new_token))
 
     @profile
-    def step(self, action, qarow, k):
+    def step(self, action, qarow, k, train):
         reward = 0
         mrr = 0
         if action == 1:
@@ -77,7 +77,7 @@ class Environment:
                 if len(surface) > 0:
                     surfaces.append(surface)
 
-                score, mrr = self.linker.best_ranks(surfaces, qarow, k)
+                score, mrr = self.linker.best_ranks(surfaces, qarow, k, train)
                 reward = score
                 if score < 0.6:
                     reward = self.negative_reward
