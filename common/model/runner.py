@@ -6,19 +6,29 @@ from config import config
 from common.model.agent import Agent
 from common.model.policy import Policy
 from common.model.environment import Environment
-from common.linkers.orderedLinker import OrderedLinker
-from common.linkers.stringSimilaritySorter import StringSimilaritySorter
-from common.linkers.embeddingSimilaritySorter import EmbeddingSimilaritySorter
+from common.linkers.relationOrderLinker import RelationOrderedLinker
+from common.linkers.entityOrderedLinker import EntityOrderedLinker
+from common.linkers.sorter.stringSimilaritySorter import StringSimilaritySorter
+from common.linkers.sorter.embeddingSimilaritySorter import EmbeddingSimilaritySorter
+from common.linkers.candidate_generator.graphCG import GraphCG
+from common.linkers.candidate_generator.ngramCG import NGramLinker
 from common.utils import *
 
 
 class Runner:
     def __init__(self, lc_quad, args):
         word_vectorizer = lc_quad.word_vectorizer
-        linker = OrderedLinker(sorters=[StringSimilaritySorter(), EmbeddingSimilaritySorter(word_vectorizer)],
-                               rel2id_path=config['lc_quad']['rel2id'],
-                               core_chains_path=config['lc_quad']['core_chains'],
-                               dataset=lc_quad)
+        entity_linker = EntityOrderedLinker(
+            candidate_generator=NGramLinker(None),
+            sorters=[StringSimilaritySorter()],
+            vocab=lc_quad.vocab)
+
+        relation_linker = RelationOrderedLinker(
+            candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
+                                        core_chains_path=config['lc_quad']['core_chains'],
+                                        dataset=lc_quad),
+            sorters=[StringSimilaritySorter(), EmbeddingSimilaritySorter(word_vectorizer)],
+            vocab=lc_quad.vocab)
 
         policy_network = Policy(vocab_size=lc_quad.vocab.size(),
                                 emb_size=word_vectorizer.word_size,
@@ -33,7 +43,8 @@ class Runner:
                            policy_optimizer=torch.optim.Adam(
                                filter(lambda p: p.requires_grad, policy_network.parameters()), lr=args.lr))
 
-        self.environment = Environment(linker=linker,
+        self.environment = Environment(entity_linker=entity_linker,
+                                       relation_linker=relation_linker,
                                        positive_reward=args.positive_reward,
                                        negative_reward=args.negative_reward)
 

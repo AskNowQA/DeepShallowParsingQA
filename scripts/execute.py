@@ -24,7 +24,7 @@ if __name__ == '__main__':
     logger.info(args)
 
     lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
-                      args.remove_entity, args.remove_stop_words)
+                      True, args.remove_stop_words)
     runner = Runner(lc_quad, args)
 
     if args.mode == 'test':

@@ -3,10 +3,11 @@ from common.utils import *
 
 
 class Environment:
-    def __init__(self, linker, positive_reward=1, negative_reward=-0.5):
+    def __init__(self, entity_linker, relation_linker, positive_reward=1, negative_reward=-0.5):
         self.positive_reward = positive_reward
         self.negative_reward = negative_reward
-        self.linker = linker
+        self.entity_linker = entity_linker
+        self.relation_linker = relation_linker
         self.state = []
         self.target = []
         self.input_seq = []
@@ -40,7 +41,7 @@ class Environment:
         return output
 
     def is_done(self):
-        return self.seq_counter == self.input_seq_size + 1 or sum(self.action_seq[-3:]) > 2
+        return self.seq_counter == self.input_seq_size + 1  # or sum(self.action_seq[-3:]) > 2
 
     @profile
     def update_state(self, action, new_token):
@@ -61,26 +62,32 @@ class Environment:
                 reward = self.negative_reward
             else:
                 last_tag = 0
-                surfaces = []
+                surfaces = [[], []]
                 surface = []
                 for idx, tag in enumerate(self.action_seq):
-                    if tag == 1:
-                        if last_tag == 1:
+                    if tag != 0:
+                        if last_tag == tag:
                             surface.append(self.input_seq[idx])
                         else:
+                            if len(surface) > 0:
+                                surfaces[last_tag - 1].append(surface)
                             surface = [self.input_seq[idx]]
                     elif tag == 0:
                         if len(surface) > 0:
-                            surfaces.append(surface)
+                            if len(surface) > 0:
+                                surfaces[last_tag - 1].append(surface)
                             surface = []
                     last_tag = tag
                 if len(surface) > 0:
-                    surfaces.append(surface)
+                    if len(surface) > 0:
+                        surfaces[last_tag - 1].append(surface)
 
-                score, mrr = self.linker.best_ranks(surfaces, qarow, k, train)
-                reward = score
-                if score < 0.6:
-                    reward = self.negative_reward
-                # else:
-                #    reward = score * 10 * self.positive_reward
+                relation_score, relation_mrr = self.relation_linker.best_ranks(surfaces[0], qarow, k, train)
+                if relation_score < 0.6:
+                    relation_score = self.negative_reward
+                # entity_score, entity_mrr = self.entity_linker.best_ranks(surfaces[1], qarow, k, train)
+                # if entity_score < 0.6:
+                #     entity_score = self.negative_reward
+                reward = relation_score  # + entity_score
+                mrr = (relation_mrr)  # + entity_mrr) / 2
         return self.state, reward, is_done, mrr

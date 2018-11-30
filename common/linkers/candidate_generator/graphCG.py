@@ -3,7 +3,7 @@ import ujson as json
 from common.utils import *
 
 
-class UnorderedLinker:
+class GraphCG:
     def __init__(self, rel2id_path, core_chains_path, dataset):
         self.dataset = dataset
         with open(rel2id_path, 'rb') as f_h:
@@ -19,7 +19,7 @@ class UnorderedLinker:
         return None
 
     @profile
-    def link(self, surface, question):
+    def generate(self, surface, question):
         core_chain = self.__find_core_chain(question)
         if core_chain is not None:
             hop_1 = core_chain['uri']['hop-1-properties']
@@ -28,10 +28,3 @@ class UnorderedLinker:
             hop_2 = set([item[3] for item in hop_2])
             results = [self.id2rel[id] for id in hop_1 | hop_2]
             return results
-
-    @profile
-    def link_all(self, surfaces, qarow):
-        output = []
-        for surface in surfaces:
-            output.append(self.link(surface, qarow.question))
-        return output
