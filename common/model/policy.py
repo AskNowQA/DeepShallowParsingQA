@@ -5,6 +5,7 @@ import torch.nn as nn
 class Policy(nn.Module):
     def __init__(self, vocab_size, emb_size, input_size, hidden_size, output_size, dropout_ratio):
         super(Policy, self).__init__()
+        self.output_size = output_size
 
         self.emb = nn.Embedding(vocab_size, emb_size, padding_idx=0, sparse=False)
         self.emb.weight.requires_grad = False
