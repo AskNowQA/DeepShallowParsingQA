@@ -12,14 +12,20 @@ from common.linkers.sorter.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.sorter.embeddingSimilaritySorter import EmbeddingSimilaritySorter
 from common.linkers.candidate_generator.graphCG import GraphCG
 from common.linkers.candidate_generator.ngramCG import NGramLinker
+from common.linkers.candidate_generator.datasetCG import DatasetCG
+from common.linkers.candidate_generator.elastic import Elastic
 from common.utils import *
 
 
 class Runner:
     def __init__(self, lc_quad, args):
         word_vectorizer = lc_quad.word_vectorizer
+        elastic = Elastic(config['elastic']['server'],
+                          config['elastic']['entity_index_config'],
+                          config['dbpedia']['entities'],
+                          create_entity_index=False)
         entity_linker = EntityOrderedLinker(
-            candidate_generator=NGramLinker(None),
+            candidate_generator=DatasetCG(lc_quad),  # NGramLinker(elastic),  
             sorters=[StringSimilaritySorter()],
             vocab=lc_quad.vocab)
 
@@ -34,7 +40,7 @@ class Runner:
                                 emb_size=word_vectorizer.word_size,
                                 input_size=word_vectorizer.word_size * 3 + 1 + 1,
                                 hidden_size=word_vectorizer.word_size,
-                                output_size=2,
+                                output_size=3,
                                 dropout_ratio=args.dropout)
         policy_network.emb.weight.data.copy_(word_vectorizer.emb)
         self.agent = Agent(number_of_relations=2,

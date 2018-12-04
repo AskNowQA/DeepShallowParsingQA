@@ -85,9 +85,9 @@ class Environment:
                 relation_score, relation_mrr = self.relation_linker.best_ranks(surfaces[0], qarow, k, train)
                 if relation_score < 0.6:
                     relation_score = self.negative_reward
-                # entity_score, entity_mrr = self.entity_linker.best_ranks(surfaces[1], qarow, k, train)
-                # if entity_score < 0.6:
-                #     entity_score = self.negative_reward
-                reward = relation_score  # + entity_score
-                mrr = (relation_mrr)  # + entity_mrr) / 2
+                entity_score, entity_mrr = self.entity_linker.best_ranks(surfaces[1], qarow, k, train)
+                if entity_score < 0.6:
+                    entity_score = self.negative_reward
+                reward = relation_score + entity_score
+                mrr = (relation_mrr + entity_mrr) / 2
         return self.state, reward, is_done, mrr
