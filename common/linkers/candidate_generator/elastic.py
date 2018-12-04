@@ -30,6 +30,8 @@ class Elastic:
                     if 'dbpediaLabel' in json_object and 'wikidataLabel' in json_object:
                         print(json_object)
 
+                    if len(label) > 70:
+                        continue
                     data_dict = {'key': json_object['uri'],
                                  'dtype': dtype,
                                  'label': label,
@@ -68,16 +70,17 @@ class Elastic:
         print("bulk indexing done")
         return res
 
-    def search_ngram(self, text, index, constraint=None):
+    def search_ngram(self, text, index, constraint=None, size=10):
         if constraint is None:
-            results = self.es.search(index=index, doc_type='resources', body={
+            results = self.es.search(index=index, doc_type='resources', size=size, body={
                 'query': {'match': {'label': text, }}
             })
         else:
-            results = self.es.search(index=index, doc_type='resources', body={
+            results = self.es.search(index=index, doc_type='resources', size=size, body={
                 'query': {'bool': {'must': [{'match': {'label': text}}, {'match': {'dtype': constraint}}]}}
             })
         if results['hits']['total'] > 0:
             return [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
+        else:
+            print(results)
         return None
-
