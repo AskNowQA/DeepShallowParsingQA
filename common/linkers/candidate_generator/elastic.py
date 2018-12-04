@@ -1,5 +1,4 @@
 from elasticsearch import Elasticsearch
-from config import config
 import ujson as json
 from tqdm import tqdm
 
@@ -79,13 +78,6 @@ class Elastic:
                 'query': {'bool': {'must': [{'match': {'label': text}}, {'match': {'dtype': constraint}}]}}
             })
         if results['hits']['total'] > 0:
-            return results['hits']['hits']
+            return [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
         return None
 
-
-if __name__ == '__main__':
-    e = Elastic(config['elastic']['server'],
-                config['elastic']['entity_index_config'],
-                config['dbpedia']['entities'],
-                create_entity_index=False)
-    print(e.search_ngram('bill finger', 'idx'))
