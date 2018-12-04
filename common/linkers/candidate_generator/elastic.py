@@ -15,7 +15,7 @@ class Elastic:
             type_name = 'resources'
             bulk_data = []
             counter = 0
-            with open(entities_path, 'r') as file_handler:
+            with open(entities_path, 'r', encoding='utf-8') as file_handler:
                 for line in tqdm(file_handler):
                     json_object = json.loads(line)['_source']
                     if 'http://dbpedia.org/' in json_object['uri']:
@@ -64,7 +64,7 @@ class Elastic:
 
         print(len(bulk_data))
         print("bulk indexing...")
-        res = self.es.bulk(index=index_name, body=bulk_data, refresh=True)
+        res = self.es.bulk(index=index_name, body=bulk_data, refresh=True, request_timeout=60)
         print("bulk indexing done")
         return res
 
