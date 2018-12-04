@@ -12,7 +12,7 @@ config = {
                     'filter': {
                         'trigrams_filter': {
                             'type': 'ngram',
-                            'min_gram': 2,
+                            'min_gram': 3,
                             'max_gram': 3
                         }
                     },
