@@ -20,12 +20,12 @@ from common.utils import *
 class Runner:
     def __init__(self, lc_quad, args):
         word_vectorizer = lc_quad.word_vectorizer
-        elastic = Elastic(config['elastic']['server'],
-                          config['elastic']['entity_index_config'],
-                          config['dbpedia']['entities'],
-                          create_entity_index=False)
+        self.elastic = Elastic(config['elastic']['server'],
+                               config['elastic']['entity_index_config'],
+                               config['dbpedia']['entities'],
+                               create_entity_index=False)
         entity_linker = EntityOrderedLinker(
-            candidate_generator=DatasetCG(lc_quad),  # NGramLinker(elastic),  
+            candidate_generator=DatasetCG(lc_quad),
             sorters=[StringSimilaritySorter()],
             vocab=lc_quad.vocab)
 
@@ -100,6 +100,7 @@ class Runner:
             print(np.mean(total_reward), np.mean(total_rmm), np.mean(total_loss))
 
     def test(self, lc_quad, args):
+        self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic)
         total_rmm = []
         for idx, qarow in enumerate(lc_quad.test_set):
             reward, mrr, loss = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
