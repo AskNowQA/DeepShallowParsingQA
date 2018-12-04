@@ -1,4 +1,5 @@
 import torch
+import logging
 from common.utils import *
 
 
@@ -15,6 +16,7 @@ class Environment:
         self.seq_counter = 0
         self.action_seq = []
         self.num_surface = 0
+        self.logger = logging.getLogger('main')
 
     def init(self, input_seq):
         self.input_seq = torch.LongTensor(input_seq)
@@ -90,4 +92,7 @@ class Environment:
                     entity_score = self.negative_reward
                 reward = relation_score + entity_score
                 mrr = (relation_mrr + entity_mrr) / 2
+
+                self.logger.debug(mrr)
+                self.logger.debug('')
         return self.state, reward, is_done, mrr
