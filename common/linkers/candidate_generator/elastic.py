@@ -4,14 +4,13 @@ from tqdm import tqdm
 
 
 class Elastic:
-    def __init__(self, server, entity_index_config, entities_path, create_entity_index=False):
+    def __init__(self, server, entity_index_config, entities_path, index_name='idx', create_entity_index=False):
         self.es = Elasticsearch(hosts=[server])
 
         if create_entity_index:
             batch_size = 100000
             delete_index = True
 
-            index_name = 'idx'
             type_name = 'resources'
             bulk_data = []
             counter = 0
@@ -30,28 +29,29 @@ class Elastic:
                     if 'dbpediaLabel' in json_object and 'wikidataLabel' in json_object:
                         print(json_object)
 
-                    if len(label) > 70:
+                    if len(label) <= 2 or len(label) > 70:
                         continue
+                    label = label.lower()
                     data_dict = {'key': json_object['uri'],
                                  'dtype': dtype,
                                  'label': label,
                                  'edge_count': json_object['edgecount']}
-                    op_dict = {"index": {"_index": index_name, "_type": type_name, "_id": json_object['uri']}}
+                    op_dict = {"index": {"_index": index_name, "_type": type_name}}
                     bulk_data.append(op_dict)
                     bulk_data.append(data_dict)
                     if counter > 0 and counter % batch_size == 0:
-                        res = self.__bulk_indexing(index_name='idx',
-                                                   delete_index=delete_index,
-                                                   index_config=entity_index_config,
-                                                   bulk_data=bulk_data)
+                        self.__bulk_indexing(index_name=index_name,
+                                             delete_index=delete_index,
+                                             index_config=entity_index_config,
+                                             bulk_data=bulk_data)
                         bulk_data = []
                         delete_index = False
                     counter += 1
                 if len(bulk_data) > 0:
-                    res = self.__bulk_indexing(index_name='idx',
-                                               delete_index=delete_index,
-                                               index_config=entity_index_config,
-                                               bulk_data=bulk_data)
+                    self.__bulk_indexing(index_name=index_name,
+                                         delete_index=delete_index,
+                                         index_config=entity_index_config,
+                                         bulk_data=bulk_data)
 
     def __bulk_indexing(self, index_name, delete_index, index_config, bulk_data):
         if delete_index:
@@ -71,6 +71,7 @@ class Elastic:
         return res
 
     def search_ngram(self, text, index, constraint=None, size=10):
+        output = []
         if constraint is None:
             results = self.es.search(index=index, doc_type='resources', size=size, body={
                 'query': {'match': {'label': text, }}
@@ -80,7 +81,7 @@ class Elastic:
                 'query': {'bool': {'must': [{'match': {'label': text}}, {'match': {'dtype': constraint}}]}}
             })
         if results['hits']['total'] > 0:
-            return [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
+            output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
         else:
             print(results)
-        return None
+        return output
