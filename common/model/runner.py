@@ -1,6 +1,9 @@
 import torch
 import numpy as np
 from tqdm import tqdm
+import similarity.levenshtein
+import similarity.ngram
+import jellyfish
 
 from config import config
 from common.model.agent import Agent
@@ -21,19 +24,24 @@ class Runner:
     def __init__(self, lc_quad, args):
         word_vectorizer = lc_quad.word_vectorizer
         self.elastic = Elastic(config['elastic']['server'],
-                               config['elastic']['entity_index_config'],
+                               config['elastic']['entity_ngram_index_config'],
                                config['dbpedia']['entities'],
+                               index_name='entity_whole_match',
                                create_entity_index=False)
+        string_similarity_metric = similarity.ngram.NGram(2).distance
+        # string_similarity_metric = similarity.levenshtein.Levenshtein().distance()
+        # string_similarity_metric = jellyfish.levenshtein_distance
         entity_linker = EntityOrderedLinker(
             candidate_generator=DatasetCG(lc_quad),
-            sorters=[StringSimilaritySorter()],
+            sorters=[StringSimilaritySorter(string_similarity_metric)],
             vocab=lc_quad.vocab)
 
         relation_linker = RelationOrderedLinker(
             candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
                                         core_chains_path=config['lc_quad']['core_chains'],
                                         dataset=lc_quad),
-            sorters=[StringSimilaritySorter(), EmbeddingSimilaritySorter(word_vectorizer)],
+            sorters=[StringSimilaritySorter(string_similarity_metric),
+                     EmbeddingSimilaritySorter(word_vectorizer)],
             vocab=lc_quad.vocab)
 
         policy_network = Policy(vocab_size=lc_quad.vocab.size(),
@@ -100,7 +108,7 @@ class Runner:
             print(np.mean(total_reward), np.mean(total_rmm), np.mean(total_loss))
 
     def test(self, lc_quad, args):
-        self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic)
+        self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic, index_name='entity_whole_match')
         total_rmm = []
         for idx, qarow in enumerate(lc_quad.test_set):
             reward, mrr, loss = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
