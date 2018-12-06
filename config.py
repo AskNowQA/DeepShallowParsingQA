@@ -4,23 +4,25 @@ config = {
     'base_path': '/Users/hamid/workspace/DeepShallowParsingQA',
     'elastic': {
         'server': '127.0.0.1:9200',
-        'entity_index_config': {
+        'entity_ngram_index_config': {
             'settings': {
+                'max_ngram_diff': 10,
                 'number_of_shards': 1,
                 'number_of_replicas': 0,
                 'analysis': {
                     'filter': {
-                        'trigrams_filter': {
+                        'ngram_filter': {
                             'type': 'ngram',
                             'min_gram': 3,
-                            'max_gram': 3
+                            'max_gram': 3,
+                            "token_chars": ["letter", "digit"]
                         }
                     },
                     'analyzer': {
-                        'trigrams': {
+                        'ngram_analyzer': {
                             'type': 'custom',
                             'tokenizer': 'standard',
-                            'filter': ['lowercase', 'trigrams_filter']
+                            'filter': ['lowercase', 'ngram_filter']
                         }
                     }
                 }
@@ -29,11 +31,7 @@ config = {
                 'properties': {
                     'label': {
                         'type': 'text',
-                        'analyzer': 'trigrams'
-                    },
-                    'wikidata_label': {
-                        'type': 'text',
-                        'analyzer': 'trigrams'
+                        'analyzer': 'ngram_analyzer'
                     },
                     'edge_count': {
                         'type': 'integer'
@@ -41,6 +39,20 @@ config = {
                 }
             }}
 
+        },
+        'entity_whole_match_index_config': {
+            'mappings': {'resources': {
+                'properties': {
+                    'label': {
+                        'type': 'text',
+                        "index_options": "docs",
+                        "analyzer": "english"
+                    },
+                    'edge_count': {
+                        'type': 'integer'
+                    }
+                }
+            }}
         }
     }
 }
