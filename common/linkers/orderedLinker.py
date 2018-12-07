@@ -41,6 +41,8 @@ class OrderedLinker:
                 number_of_candidates = len(candidates)
                 if target_uri.raw_uri in candidates_dict[candidates_idx]:
                     idx = candidates_dict[candidates_idx][target_uri.raw_uri]
+                    if idx >= 1 and output[candidates_idx][1][idx][1] == output[candidates_idx][1][idx - 1][1]:
+                        idx -= 1
                     output2.append([target_uri, candidates_idx, 1 - idx / number_of_candidates, idx, surface])
         output2.sort(key=lambda x: x[2], reverse=True)
         used_uris, used_candidates, scores, rank = [], [], [], []
