@@ -9,6 +9,7 @@ class SPARQL:
 
     def __extract_relations(self, sparql):
         output = re.findall('<[^>]*>', sparql)
-        relations = [URI(item) for item in output if '/ontology/' in item or '/property/' in item]
+        relations = set([item for item in output if '/ontology/' in item or '/property/' in item])
+        relations = [URI(item) for item in relations]
         entities = [URI(item, ngram=3) for item in output if '/resource/' in item]
         return entities, relations
