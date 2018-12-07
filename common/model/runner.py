@@ -6,7 +6,6 @@ import similarity.ngram
 import jellyfish
 import logging
 
-
 from config import config
 from common.model.agent import Agent
 from common.model.policy import Policy
@@ -112,6 +111,7 @@ class Runner:
 
     def test(self, lc_quad, args):
         self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic, index_name='entity_whole_match')
+        self.environment.entity_linker.sorters = [StringSimilaritySorter(similarity.ngram.NGram(2).distance)]
         try_total = []
         for i in range(5):
             total_rmm = []
