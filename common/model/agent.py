@@ -25,8 +25,7 @@ class Agent:
             action = m.sample()
         if self.cuda:
             action = action.cuda()
-        del action_dist
-        return action, m.log_prob(action)
+        return action, m.log_prob(action), action_dist.data.numpy().tolist()
 
     @profile
     def backward(self, rewards, action_log_probs):

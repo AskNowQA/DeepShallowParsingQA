@@ -50,7 +50,7 @@ class Environment:
         return torch.cat((torch.LongTensor([self.num_surface, action]), new_token))
 
     @profile
-    def step(self, action, qarow, k, train):
+    def step(self, action, action_probs, qarow, k, train):
         reward = 0
         mrr = 0
         if action == 1:
@@ -81,9 +81,10 @@ class Environment:
                             surface = []
                     last_tag = tag
                 if len(surface) > 0:
-                    if len(surface) > 0:
-                        surfaces[last_tag - 1].append(surface)
+                    surfaces[last_tag - 1].append(surface)
 
+                self.logger.debug(qarow.question)
+                self.logger.debug(list(zip(qarow.normalized_question, action_probs)))
                 relation_score, relation_mrr = self.relation_linker.best_ranks(surfaces[0], qarow, k, train)
                 if relation_score < 0.6:
                     relation_score = self.negative_reward
@@ -92,7 +93,6 @@ class Environment:
                     entity_score = self.negative_reward
                 reward = relation_score + entity_score
                 mrr = (relation_mrr + entity_mrr) / 2
-
                 self.logger.debug(mrr)
                 self.logger.debug('')
         return self.state, reward, is_done, mrr

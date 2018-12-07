@@ -4,6 +4,8 @@ from tqdm import tqdm
 import similarity.levenshtein
 import similarity.ngram
 import jellyfish
+import logging
+
 
 from config import config
 from common.model.agent import Agent
@@ -22,15 +24,16 @@ from common.utils import *
 
 class Runner:
     def __init__(self, lc_quad, args):
+        self.logger = logging.getLogger('main')
         word_vectorizer = lc_quad.word_vectorizer
         self.elastic = Elastic(config['elastic']['server'],
                                config['elastic']['entity_ngram_index_config'],
                                config['dbpedia']['entities'],
                                index_name='entity_whole_match',
                                create_entity_index=False)
-        string_similarity_metric = similarity.ngram.NGram(2).distance
-        # string_similarity_metric = similarity.levenshtein.Levenshtein().distance()
-        # string_similarity_metric = jellyfish.levenshtein_distance
+        # string_similarity_metric = similarity.ngram.NGram(2).distance
+        # string_similarity_metric = similarity.levenshtein.Levenshtein().distance
+        string_similarity_metric = jellyfish.levenshtein_distance
         entity_linker = EntityOrderedLinker(
             candidate_generator=DatasetCG(lc_quad),
             sorters=[StringSimilaritySorter(string_similarity_metric)],
@@ -109,27 +112,32 @@ class Runner:
 
     def test(self, lc_quad, args):
         self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic, index_name='entity_whole_match')
-        total_rmm = []
-        for idx, qarow in enumerate(lc_quad.test_set):
-            reward, mrr, loss = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
-            total_rmm.append(mrr)
-        total = np.mean(total_rmm)
-        print(total)
+        try_total = []
+        for i in range(5):
+            total_rmm = []
+            for idx, qarow in enumerate(lc_quad.test_set):
+                reward, mrr, loss = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
+                total_rmm.append(mrr)
+            total = np.mean(total_rmm)
+            print(total)
+            try_total.append(total)
+        print(np.mean(try_total), np.min(try_total), np.max(try_total))
         return total
 
     @profile
     def step(self, input, qarow, e, train=True, k=0):
-        rewards, action_log_probs, total_reward = [], [], []
+        rewards, action_log_probs, action_probs, total_reward = [], [], [], []
         loss = 0
         running_reward = 0
         self.environment.init(input)
         state = self.environment.state
         while True:
-            action, action_log_prob = self.agent.select_action(state, e)
-            new_state, reward, done, mrr = self.environment.step(action, qarow, k, train=train)
+            action, action_log_prob, action_prob = self.agent.select_action(state, e)
+            action_log_probs.append(action_log_prob)
+            action_probs.append(action_prob)
+            new_state, reward, done, mrr = self.environment.step(action, action_probs, qarow, k, train=train)
             running_reward += reward
             rewards.append(reward)
-            action_log_probs.append(action_log_prob)
             state = new_state
             if done:
                 if train:
