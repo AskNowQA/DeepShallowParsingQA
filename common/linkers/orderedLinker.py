@@ -32,7 +32,10 @@ class OrderedLinker:
         output = [item for tmp in output for item in tmp]
         if len(output) == 0:
             return -1, mrr
-        candidates_dict = [{candidate[0]: idx for idx, candidate in enumerate(candidates[1])} for candidates in output]
+        candidates_dict = [
+            {candidate[0]: idx for idx, candidate in
+             zip(range(len(candidates[1]) - 1, -1, -1), reversed(candidates[1]))}
+            for candidates in output]
         output2 = []
         for target_uri in target_uris:
             for candidates_idx, candidates in enumerate(output):
