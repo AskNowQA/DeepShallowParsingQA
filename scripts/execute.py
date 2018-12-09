@@ -17,7 +17,7 @@ if __name__ == '__main__':
     args = parse_args()
     logger = logging.getLogger('main')
     logger.setLevel(logging.INFO)
-    formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s")
+    formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
     logger.addHandler(ch)

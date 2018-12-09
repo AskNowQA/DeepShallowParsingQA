@@ -1,5 +1,6 @@
 import torch
 import logging
+from termcolor import colored
 from common.utils import *
 
 
@@ -84,7 +85,13 @@ class Environment:
                     surfaces[last_tag - 1].append(surface)
 
                 self.logger.debug(qarow.question)
-                self.logger.debug(list(zip(qarow.normalized_question, action_probs)))
+                if self.logger.level == logging.DEBUG:
+                    for word, prob in zip(qarow.normalized_question, action_probs):
+                        Utils.print_color(word, bg=Utils.rgb(*prob), end=' ')
+                    print()
+                self.logger.debug(list(zip(qarow.normalized_question,
+                                           [['{:0.2f}'.format(item) for item in probs] for probs in action_probs])))
+
                 relation_score, relation_mrr = self.relation_linker.best_ranks(surfaces[0], qarow, k, train)
                 if relation_score < 0.6:
                     relation_score = self.negative_reward
