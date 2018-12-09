@@ -3,7 +3,7 @@ from nltk.corpus import stopwords
 
 
 class QARow:
-    stop_words = set(stopwords.words('english'))
+    stop_words = set(stopwords.words('english')) - set(['where'])
 
     def __init__(self, question, annotation, raw_sparql, remove_entity_mention, remove_stop_words):
         self.question = question
