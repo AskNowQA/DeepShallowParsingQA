@@ -1,6 +1,5 @@
 import torch
 import logging
-from termcolor import colored
 from common.utils import *
 
 
