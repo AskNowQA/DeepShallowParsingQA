@@ -14,17 +14,20 @@ class Agent:
             self.policy_network.cuda()
 
     @profile
-    def select_action(self, state, e):
+    def select_action(self, state, e, train):
         if self.cuda:
             state = state.cuda()
         action_dist = self.policy_network(state)
         m = torch.distributions.Categorical(action_dist)
-        if np.random.rand(1) < e:
-            action = torch.multinomial(torch.zeros(len(action_dist)) + 0.5, self.policy_network.output_size)[0]
+        if train:
+            if np.random.rand(1) < e:
+                action = torch.multinomial(torch.zeros(len(action_dist)) + 0.5, self.policy_network.output_size)[0]
+            else:
+                action = m.sample()
+            if self.cuda:
+                action = action.cuda()
         else:
-            action = m.sample()
-        if self.cuda:
-            action = action.cuda()
+            action = torch.argmax(action_dist)
         return action, m.log_prob(action), action_dist.data.numpy().tolist()
 
     @profile

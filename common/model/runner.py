@@ -132,7 +132,7 @@ class Runner:
         self.environment.init(input)
         state = self.environment.state
         while True:
-            action, action_log_prob, action_prob = self.agent.select_action(state, e)
+            action, action_log_prob, action_prob = self.agent.select_action(state, e, train)
             action_log_probs.append(action_log_prob)
             action_probs.append(action_prob)
             new_state, reward, done, mrr = self.environment.step(action, action_probs, qarow, k, train=train)
