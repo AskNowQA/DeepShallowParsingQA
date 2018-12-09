@@ -28,7 +28,7 @@ class Agent:
                 action = action.cuda()
         else:
             action = torch.argmax(action_dist)
-        return action, m.log_prob(action), action_dist.data.numpy().tolist()
+        return action, m.log_prob(action), action_dist.data.cpu().numpy().tolist()
 
     @profile
     def backward(self, rewards, action_log_probs):
