@@ -30,6 +30,6 @@ class EntityOrderedLinker(OrderedLinker):
         # self.logger.debug(qa_row.normalized_question)
         self.logger.debug([' '.join(self.vocab.convertToLabels(item)) for item in surfaces])
         self.logger.debug([rel.raw_uri for rel in qa_row.sparql.entities])
-        self.logger.debug(results[1])
+        self.logger.debug(results)
 
         return results
