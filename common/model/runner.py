@@ -35,7 +35,7 @@ class Runner:
         string_similarity_metric = jellyfish.levenshtein_distance
         entity_linker = EntityOrderedLinker(
             candidate_generator=DatasetCG(lc_quad),
-            sorters=[StringSimilaritySorter(string_similarity_metric)],
+            sorters=[StringSimilaritySorter(string_similarity_metric, return_similarity=True)],
             vocab=lc_quad.vocab)
 
         relation_linker = RelationOrderedLinker(
@@ -80,13 +80,16 @@ class Runner:
         total_reward, total_rmm, total_loss = [], [], []
         max_rmm, max_rmm_index = 0, -1
         iter = tqdm(range(args.epochs))
+        history = {' '.join(qarow.normalized_question): [] for qarow in lc_quad.train_set}
         self.agent.policy_network.zero_grad()
         for epoch in iter:
             for idx, qarow in enumerate(lc_quad.train_set):
-                reward, mrr, loss = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k, train=True)
+                reward, mrr, loss, actions = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k,
+                                                       train=True)
                 total_reward.append(reward)
                 total_rmm.append(mrr)
                 total_loss.append(loss)
+                history[' '.join(qarow.normalized_question)].append(actions.__str__() + '{:0.2f}'.format(reward))
                 if idx % args.batchsize == 0:
                     self.agent.policy_optimizer.step()
                     self.agent.policy_network.zero_grad()
@@ -113,10 +116,10 @@ class Runner:
         self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic, index_name='entity_whole_match')
         self.environment.entity_linker.sorters = [StringSimilaritySorter(similarity.ngram.NGram(2).distance)]
         try_total = []
-        for i in range(5):
+        for i in range(1):
             total_rmm = []
             for idx, qarow in enumerate(lc_quad.test_set):
-                reward, mrr, loss = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
+                reward, mrr, loss, _ = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
                 total_rmm.append(mrr)
             total = np.mean(total_rmm)
             print(total)
@@ -126,13 +129,15 @@ class Runner:
 
     @profile
     def step(self, input, qarow, e, train=True, k=0):
-        rewards, action_log_probs, action_probs, total_reward = [], [], [], []
+        rewards, action_log_probs, action_probs, actions = [], [], [], []
+        total_reward = 0
         loss = 0
         running_reward = 0
         self.environment.init(input)
         state = self.environment.state
         while True:
             action, action_log_prob, action_prob = self.agent.select_action(state, e, train)
+            actions.append(int(action))
             action_log_probs.append(action_log_prob)
             action_probs.append(action_prob)
             new_state, reward, done, mrr = self.environment.step(action, action_probs, qarow, k, train=train)
@@ -142,7 +147,7 @@ class Runner:
             if done:
                 if train:
                     loss = self.agent.backward(rewards, action_log_probs)
-                total_reward.append(running_reward)
+                total_reward = running_reward
                 break
         del action_log_prob
-        return total_reward, mrr, loss
+        return total_reward, mrr, loss, actions

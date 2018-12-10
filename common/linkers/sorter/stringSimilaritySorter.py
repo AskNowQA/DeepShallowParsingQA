@@ -3,8 +3,9 @@ from common.utils import *
 
 
 class StringSimilaritySorter:
-    def __init__(self, metric):
+    def __init__(self, metric, return_similarity=False):
         self.metric = metric
+        self.return_similarity = return_similarity
 
     @profile
     def sort(self, surface, question, candidates):
@@ -18,4 +19,9 @@ class StringSimilaritySorter:
         candidates_distance = candidates_distance
         filtered_candidates = np.array(candidates, dtype=object)
         idxs = np.argsort(candidates_distance)
-        return filtered_candidates[idxs]
+        if self.return_similarity:
+            candidates_similarity = 1 - (candidates_distance) / max(np.max(candidates_distance), len(surface))
+            output = np.hstack((filtered_candidates[idxs], candidates_similarity[idxs].reshape(-1, 1)))
+        else:
+            output = filtered_candidates[idxs]
+        return output
