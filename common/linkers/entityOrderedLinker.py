@@ -3,8 +3,8 @@ from common.utils import *
 
 
 class EntityOrderedLinker(OrderedLinker):
-    def __init__(self, candidate_generator, sorters, vocab, include_similarrity_score=True):
-        super(EntityOrderedLinker, self).__init__(candidate_generator, sorters, vocab, include_similarrity_score)
+    def __init__(self, candidate_generator, sorters, vocab, include_similarity_score=True):
+        super(EntityOrderedLinker, self).__init__(candidate_generator, sorters, vocab, include_similarity_score)
 
     @profile
     def best_ranks(self, surfaces, qa_row, k, train):

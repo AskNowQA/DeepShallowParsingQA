@@ -1,14 +1,15 @@
 import logging
+import numpy as np
 from common.utils import *
 
 
 class OrderedLinker:
-    def __init__(self, candidate_generator, sorters, vocab, include_similarrity_score=False):
+    def __init__(self, candidate_generator, sorters, vocab, include_similarity_score=False):
         self.candidate_generator = candidate_generator
         self.sorters = sorters
         self.vocab = vocab
         self.logger = logging.getLogger('main')
-        self.include_similarrity_score = include_similarrity_score
+        self.include_similarity_score = include_similarity_score
 
     @profile
     def link(self, surface, question):
@@ -58,7 +59,7 @@ class OrderedLinker:
                 used_candidates.append(item[1])
                 tmp = 1
                 # tmp = len(item[0].tokens) / (abs(len(item[4]) - len(item[0].tokens)) + 1)
-                if self.include_similarrity_score and isinstance(output[item[1]][1][item[3]][-1], float):
+                if self.include_similarity_score and isinstance(output[item[1]][1][item[3]][-1], float):
                     tmp = output[item[1]][1][item[3]][-1]
                 scores.append(item[2] * tmp)
                 if item[3] <= k:
