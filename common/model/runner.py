@@ -5,6 +5,7 @@ import similarity.levenshtein
 import similarity.ngram
 import jellyfish
 import logging
+import os
 
 from config import config
 from common.model.agent import Agent
@@ -42,7 +43,7 @@ class Runner:
             candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
                                         core_chains_path=config['lc_quad']['core_chains'],
                                         dataset=lc_quad),
-            sorters=[StringSimilaritySorter(string_similarity_metric),
+            sorters=[StringSimilaritySorter(string_similarity_metric, return_similarity=True),
                      EmbeddingSimilaritySorter(word_vectorizer)],
             vocab=lc_quad.vocab)
 
@@ -65,11 +66,12 @@ class Runner:
                                        negative_reward=args.negative_reward)
 
     def load_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
-        if torch.cuda.is_available():
-            checkpoint = torch.load(checkpoint_filename)
-        else:
-            checkpoint = torch.load(checkpoint_filename, map_location=lambda storage, loc: storage)
-        self.agent.policy_network.load_state_dict(checkpoint['model'])
+        if os.path.isfile(checkpoint_filename):
+            if torch.cuda.is_available():
+                checkpoint = torch.load(checkpoint_filename)
+            else:
+                checkpoint = torch.load(checkpoint_filename, map_location=lambda storage, loc: storage)
+            self.agent.policy_network.load_state_dict(checkpoint['model'])
 
     def save_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
         checkpoint = {'model': self.agent.policy_network.state_dict()}
@@ -115,16 +117,13 @@ class Runner:
     def test(self, lc_quad, args):
         self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic, index_name='entity_whole_match')
         self.environment.entity_linker.sorters = [StringSimilaritySorter(similarity.ngram.NGram(2).distance)]
-        try_total = []
-        for i in range(1):
-            total_rmm = []
-            for idx, qarow in enumerate(lc_quad.test_set):
-                reward, mrr, loss, _ = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False, k=args.k)
-                total_rmm.append(mrr)
-            total = np.mean(total_rmm)
-            print(total)
-            try_total.append(total)
-        print(np.mean(try_total), np.min(try_total), np.max(try_total))
+        total_rmm = []
+        for idx, qarow in enumerate(lc_quad.test_set):
+            reward, mrr, loss, _ = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False,
+                                             k=args.k)
+            total_rmm.append(mrr)
+        total = np.mean(total_rmm)
+        print(total)
         return total
 
     @profile
