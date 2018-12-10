@@ -53,7 +53,7 @@ class Environment:
     def step(self, action, action_probs, qarow, k, train):
         reward = 0
         mrr = 0
-        if action == 1:
+        if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
         self.state = self.update_state(action, self.next_token())
@@ -97,7 +97,7 @@ class Environment:
                 entity_score, entity_mrr = self.entity_linker.best_ranks(surfaces[1], qarow, k, train)
                 if entity_score < 0.6:
                     entity_score = self.negative_reward
-                reward = relation_score + entity_score
+                reward = (relation_score + entity_score) / 2
                 mrr = (relation_mrr + entity_mrr) / 2
                 self.logger.debug(mrr)
                 self.logger.debug('')
