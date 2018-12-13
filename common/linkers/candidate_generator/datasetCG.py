@@ -8,6 +8,6 @@ class DatasetCG:
 
     @profile
     def generate(self, surface, question):
-        if question in self.dataset:
+        if len(surface) > 2 and question in self.dataset:
             return self.dataset[question]
         return []
