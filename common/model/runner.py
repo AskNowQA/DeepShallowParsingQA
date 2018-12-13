@@ -33,17 +33,17 @@ class Runner:
                                create_entity_index=False)
         # string_similarity_metric = similarity.ngram.NGram(2).distance
         # string_similarity_metric = similarity.levenshtein.Levenshtein().distance
-        string_similarity_metric = jellyfish.levenshtein_distance
+        # string_similarity_metric = jellyfish.levenshtein_distance
         entity_linker = EntityOrderedLinker(
             candidate_generator=DatasetCG(lc_quad),
-            sorters=[StringSimilaritySorter(string_similarity_metric, return_similarity=True)],
+            sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, return_similarity=True)],
             vocab=lc_quad.vocab)
 
         relation_linker = RelationOrderedLinker(
             candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
                                         core_chains_path=config['lc_quad']['core_chains'],
                                         dataset=lc_quad),
-            sorters=[StringSimilaritySorter(string_similarity_metric, return_similarity=True),
+            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True),
                      EmbeddingSimilaritySorter(word_vectorizer)],
             vocab=lc_quad.vocab)
 
@@ -107,10 +107,10 @@ class Runner:
                 if mean_rmm > max_rmm:
                     max_rmm = mean_rmm
                     max_rmm_index = epoch
-                else:
-                    if epoch >= max_rmm_index + 30:
-                        iter.close()
-                        break
+                # else:
+                #     if epoch >= max_rmm_index + 30:
+                #         iter.close()
+                #         break
         if len(total_reward) > 0:
             print(np.mean(total_reward), np.mean(total_rmm), np.mean(total_loss))
 
@@ -129,7 +129,6 @@ class Runner:
     @profile
     def step(self, input, qarow, e, train=True, k=0):
         rewards, action_log_probs, action_probs, actions = [], [], [], []
-        total_reward = 0
         loss = 0
         running_reward = 0
         self.environment.init(input)
@@ -139,14 +138,14 @@ class Runner:
             actions.append(int(action))
             action_log_probs.append(action_log_prob)
             action_probs.append(action_prob)
-            new_state, reward, done, mrr = self.environment.step(action, action_probs, qarow, k, train=train)
-            running_reward += reward
-            rewards.append(reward)
+            new_state, detailed_rewards, total_reward, done, mrr = self.environment.step(action, action_probs, qarow, k,
+                                                                                         train=train)
+            running_reward += total_reward
+            # rewards.append(total_reward)
             state = new_state
             if done:
                 if train:
-                    loss = self.agent.backward(rewards, action_log_probs)
-                total_reward = running_reward
+                    loss = self.agent.backward(detailed_rewards, total_reward, action_log_probs)
                 break
         del action_log_prob
-        return total_reward, mrr, loss, actions
+        return running_reward, mrr, loss, actions
