@@ -57,6 +57,8 @@ config = {
     }
 }
 config['data_path'] = os.path.join(config['base_path'], 'data')
+config['cache_path'] = os.path.join(config['data_path'], 'cache')
+config['env_cache_path'] = os.path.join(config['cache_path'], 'env.cache')
 config['glove_path'] = os.path.join(config['data_path'], 'glove/glove.840B.300d')
 config['checkpoint_path'] = os.path.join(config['base_path'], 'checkpoint.chpt')
 

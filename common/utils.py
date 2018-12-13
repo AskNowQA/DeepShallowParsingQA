@@ -1,3 +1,6 @@
+import os
+import ujson
+
 try:
     import builtins
 
@@ -61,3 +64,30 @@ class Utils:
         Utils.set_color(fg, bg)
         print(*args, **kwargs)
         Utils.reset_color()
+
+
+class Cache:
+    def __init__(self, file_path):
+        self.dic = {}
+        self.file_path = file_path
+        if os.path.isfile(file_path):
+            with open(self.file_path, 'r') as file_handler:
+                self.dic = ujson.load(file_handler)
+        self.dirty_counter = 0
+
+    def has(self, key):
+        return key in self.dic
+
+    def get(self, key):
+        return self.dic[key]
+
+    def add(self, key, value):
+        self.dic[key] = value
+        self.dirty_counter += 1
+        if self.dirty_counter == 10:
+            self.save()
+            self.dirty_counter = 0
+
+    def save(self):
+        with open(self.file_path, 'w') as file_handler:
+            ujson.dump(self.dic, file_handler)
