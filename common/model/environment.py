@@ -1,6 +1,7 @@
 import torch
 import logging
 from common.utils import *
+from config import config
 
 
 class Environment:
@@ -17,6 +18,7 @@ class Environment:
         self.action_seq = []
         self.num_surface = 0
         self.logger = logging.getLogger('main')
+        self.cache = Cache(config['env_cache_path'])
 
     def init(self, input_seq):
         self.input_seq = torch.LongTensor(input_seq)
@@ -51,7 +53,8 @@ class Environment:
 
     @profile
     def step(self, action, action_probs, qarow, k, train):
-        reward = 0
+        detailed_rewards = []
+        step_reward = 0
         mrr = 0
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
@@ -61,27 +64,69 @@ class Environment:
         is_done = self.is_done()
         if is_done:
             if len(self.action_seq) != len(self.input_seq):
-                reward = self.negative_reward
+                step_reward = self.negative_reward
             else:
-                last_tag = 0
-                surfaces = [[], []]
-                surface = []
-                for idx, tag in enumerate(self.action_seq):
-                    if tag != 0:
-                        if last_tag == tag:
-                            surface.append(self.input_seq[idx])
-                        else:
+                cache_key = qarow.question + ''.join(map(str, map(int, self.action_seq)))
+                if self.cache.has(cache_key):
+                    step_reward, mrr = self.cache.get(cache_key)
+                else:
+                    last_tag = 0
+                    surfaces = [[], []]
+                    surface = []
+                    for idx, tag in enumerate(self.action_seq):
+                        if tag != 0:
+                            if last_tag == tag:
+                                surface.append(self.input_seq[idx])
+                            else:
+                                if len(surface) > 0:
+                                    surfaces[last_tag - 1].append(surface)
+                                surface = [self.input_seq[idx]]
+                        elif tag == 0:
                             if len(surface) > 0:
-                                surfaces[last_tag - 1].append(surface)
-                            surface = [self.input_seq[idx]]
-                    elif tag == 0:
-                        if len(surface) > 0:
-                            if len(surface) > 0:
-                                surfaces[last_tag - 1].append(surface)
-                            surface = []
-                    last_tag = tag
-                if len(surface) > 0:
-                    surfaces[last_tag - 1].append(surface)
+                                if len(surface) > 0:
+                                    surfaces[last_tag - 1].append(surface)
+                                surface = []
+                        last_tag = tag
+                    if len(surface) > 0:
+                        surfaces[last_tag - 1].append(surface)
+
+                    relation_results, relation_score, relation_mrr = self.relation_linker.best_ranks(list(surfaces[0]),
+                                                                                                     qarow, k, train)
+                    if relation_score < 0.6:
+                        relation_score = self.negative_reward
+                    entity_results, entity_score, entity_mrr = self.entity_linker.best_ranks(list(surfaces[1]), qarow,
+                                                                                             k, train)
+                    if entity_score < 0.6:
+                        entity_score = self.negative_reward
+                    step_reward = (relation_score + entity_score) / 2
+                    if step_reward < 0.3:
+                        step_reward = self.negative_reward
+                    mrr = (relation_mrr + entity_mrr) / 2
+
+                    rel_idx = 0
+                    rel_cntr = 0
+                    ent_idx = 0
+                    ent_cntr = 0
+                    for idx, item in enumerate(self.input_seq):
+                        if self.action_seq[idx] == 0:
+                            detailed_rewards.append(0.3)
+                        elif self.action_seq[idx] == 1:
+                            # if rel_idx < len(surfaces[0]) and item in surfaces[0][rel_idx]:
+                            detailed_rewards.append(relation_results[rel_idx])
+                            rel_cntr += 1
+                            if rel_cntr == len(surfaces[0][rel_idx]):
+                                rel_idx += 1
+                                rel_cntr = 0
+                        elif self.action_seq[idx] == 2:
+                            # if ent_idx < len(surfaces[1]) and item in surfaces[1][ent_idx]:
+                            detailed_rewards.append(entity_results[ent_idx])
+                            ent_cntr += 1
+                            if ent_cntr == len(surfaces[1][ent_idx]):
+                                ent_idx += 1
+                                ent_cntr = 0
+
+                    # if train:
+                    #     self.cache.add(cache_key, (step_reward, mrr))
 
                 self.logger.debug(qarow.question)
                 if self.logger.level == logging.DEBUG:
@@ -90,15 +135,6 @@ class Environment:
                     print()
                 self.logger.debug(list(zip(qarow.normalized_question,
                                            [['{:0.2f}'.format(item) for item in probs] for probs in action_probs])))
-
-                relation_score, relation_mrr = self.relation_linker.best_ranks(surfaces[0], qarow, k, train)
-                if relation_score < 0.6:
-                    relation_score = self.negative_reward
-                entity_score, entity_mrr = self.entity_linker.best_ranks(surfaces[1], qarow, k, train)
-                if entity_score < 0.6:
-                    entity_score = self.negative_reward
-                reward = (relation_score + entity_score) / 2
-                mrr = (relation_mrr + entity_mrr) / 2
                 self.logger.debug(mrr)
                 self.logger.debug('')
-        return self.state, reward, is_done, mrr
+        return self.state, detailed_rewards, step_reward, is_done, mrr
