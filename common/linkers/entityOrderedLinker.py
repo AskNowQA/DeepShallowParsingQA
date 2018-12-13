@@ -8,16 +8,15 @@ class EntityOrderedLinker(OrderedLinker):
 
     @profile
     def best_ranks(self, surfaces, qa_row, k, train):
-        number_of_removed_items = 0
         if train:
             for entity in qa_row.sparql.entities:
-                for surface in list(surfaces):
+                for idx, surface in enumerate(surfaces):
                     string_surface = ' '.join(self.vocab.convertToLabels(surface))
                     surface_ngram = Utils.ngrams(string_surface)
                     if len(surface_ngram) == 0 or len(entity.ngram.intersection(surface_ngram)) / len(
-                            surface_ngram) < 0.7:
-                        surfaces.remove(surface)
-                        number_of_removed_items += 1
+                            surface_ngram) < 0.4:
+                        surfaces[idx] = []
+
 
         results = super(EntityOrderedLinker, self).best_ranks(surfaces,
                                                               qa_row.sparql.entities,
@@ -25,11 +24,8 @@ class EntityOrderedLinker(OrderedLinker):
                                                               k,
                                                               train)
 
-        results = (results[0] / (number_of_removed_items + 1), results[1] / (number_of_removed_items + 1))
-        # self.logger.debug(qa_row.question)
-        # self.logger.debug(qa_row.normalized_question)
         self.logger.debug([' '.join(self.vocab.convertToLabels(item)) for item in surfaces])
         self.logger.debug([rel.raw_uri for rel in qa_row.sparql.entities])
-        self.logger.debug(results)
+        self.logger.debug(results[1:])
 
         return results
