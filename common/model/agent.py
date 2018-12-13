@@ -31,10 +31,10 @@ class Agent:
         return action, m.log_prob(action), action_dist.data.cpu().numpy().tolist()
 
     @profile
-    def backward(self, rewards, action_log_probs):
+    def backward(self, detailed_rewards, total_reward, action_log_probs):
         label_target = False
         if not label_target:
-            rewards = self.discount_rewards(rewards)
+            rewards = self.discount_rewards(detailed_rewards, total_reward)
             action_log_probs = torch.stack(action_log_probs)
             if self.cuda:
                 rewards = rewards.cuda()
@@ -46,12 +46,12 @@ class Agent:
         return loss_value
 
     @profile
-    def discount_rewards(self, r):
-        discounted_r = torch.zeros((len(r)))
-        running_add = 0
-        for t in reversed(range(0, len(r))):
-            running_add = running_add * self.gamma + r[t]
-            discounted_r[t] = running_add
+    def discount_rewards(self, detailed_rewards, total_reward):
+        discounted_r = torch.zeros((len(detailed_rewards)))
+        running_add = total_reward
+        for t in reversed(range(0, len(detailed_rewards))):
+            discounted_r[t] = min(running_add + detailed_rewards[t], 1)
+            running_add = running_add * self.gamma
 
         # reward_mean = np.mean(discounted_r)
         # reward_std = np.std(discounted_r)
