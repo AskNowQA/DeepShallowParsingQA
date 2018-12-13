@@ -26,14 +26,14 @@ class OrderedLinker:
     @profile
     def best_ranks(self, surfaces, target_uris, question, k, train):
         mrr = 0
-        if train:
-            if (len(surfaces) != len(target_uris)) or any(
-                    [self.vocab.special[0] in item for item in surfaces]):
-                return -1, mrr
+        # if train:
+        #     if (len(surfaces) != len(target_uris)) or any(
+        #             [self.vocab.special[0] in item for item in surfaces]):
+        #         return -1, mrr
         output = self.link_all(surfaces, question)
         output = [item for tmp in output for item in tmp]
         if len(output) == 0:
-            return -1, mrr
+            return [0] * len(surfaces), -1, mrr
         candidates_dict = [
             {candidate[0]: idx for idx, candidate in
              zip(range(len(candidates[1]) - 1, -1, -1), reversed(candidates[1]))}
@@ -53,19 +53,30 @@ class OrderedLinker:
         used_uris, used_candidates, scores, rank = [], [], [], []
         for item in output2:
             if item[0] in used_uris or item[1] in used_candidates:
-                continue
+                scores.append(0)
             else:
                 used_uris.append(item[0])
                 used_candidates.append(item[1])
                 tmp = 1
-                # tmp = len(item[0].tokens) / (abs(len(item[4]) - len(item[0].tokens)) + 1)
                 if self.include_similarity_score and isinstance(output[item[1]][1][item[3]][-1], float):
                     tmp = output[item[1]][1][item[3]][-1]
                 scores.append(item[2] * tmp)
-                if item[3] <= k:
+                if train:
+                    if scores[-1] > 0.5 and item[3] <= k:
+                        rank.append(item[3])
+                elif item[3] <= k:
                     rank.append(item[3])
         max_len = max(len(target_uris), len(surfaces))
         if k >= 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
+        result = []
+        for surface in surfaces:
+            found = False
+            for idx, item in enumerate(output2):
+                if surface == item[4]:
+                    result.append(scores[idx])
+                    found = True
+            if not found:
+                result.append(0.0)
 
-        return sum(scores) / max_len, mrr
+        return result, sum(scores) / max_len, mrr
