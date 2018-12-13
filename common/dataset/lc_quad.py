@@ -38,7 +38,9 @@ class LC_QuAD:
                              remove_entity_mention, remove_stop_words)
                        for item in
                        raw_dataset]
-            # if len(re.findall('<[^>]*>', item['sparql_query'])) <= 2]
+            # with open('/Users/hamid/workspace/DeepShallowParsingQA/data/lcquad/no_constraints.json', 'r') as f:
+            #     no_contraints = json.load(f)
+            #     dataset = [row for row in dataset if row.question in no_contraints]
             dataset = [row for row in dataset if len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1]
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus
@@ -83,19 +85,6 @@ class LC_QuAD:
                 item.append(length)
             else:
                 item[6] = length
-        # lengths = [len(item) for item in tmp]
-        # lengths = torch.FloatTensor(lengths).reshape(-1, 1)
-        # candidates_coded = torch.zeros([len(tmp), max_length - 1], dtype=torch.long)
-        # for idx, item in enumerate(tmp):
-        #     candidates_coded[idx][:len(item)] = item
-        # if torch.cuda.is_available():
-        #     candidates_coded = candidates_coded.cuda()
-        #     lengths = lengths.cuda()
-        # candidates_embeddings = emb(candidates_coded)
-        # candidates_embeddings_mean = torch.sum(candidates_embeddings, dim=1) / lengths
-        # for idx, (item_id, item) in enumerate(rel2id.items()):
-        #     item[5] = candidates_embeddings_mean[idx]
-
         with open(config['lc_quad']['rel2id'], 'wb') as f_h:
             pk.dump(rel2id, f_h)
 
@@ -107,6 +96,6 @@ class LC_QuAD:
         vocab |= relations_vocab
         if '<ent>' in vocab:
             vocab.remove('<ent>')
-        with open(vocab_path, 'w') as f:
+        with open(vocab_path, 'w', encoding='utf-8') as f:
             for token in sorted(vocab):
                 f.write(token + '\n')
