@@ -33,6 +33,9 @@ config = {
                         'type': 'text',
                         'analyzer': 'ngram_analyzer'
                     },
+                    'key': {
+                        'type': 'keyword'
+                    },
                     'edge_count': {
                         'type': 'integer'
                     }
@@ -48,9 +51,26 @@ config = {
                         "index_options": "docs",
                         "analyzer": "english"
                     },
+                    'key': {
+                        'type': 'keyword'
+                    },
                     'edge_count': {
                         'type': 'integer'
                     }
+                }
+            }}
+        },
+        'relation_whole_match_index_config': {
+            'mappings': {'resources': {
+                'properties': {
+                    'label': {
+                        'type': 'text',
+                        "index_options": "docs",
+                        "analyzer": "english"
+                    },
+                    'key': {
+                        'type': 'keyword'
+                    },
                 }
             }}
         }
@@ -64,7 +84,8 @@ config['checkpoint_path'] = os.path.join(config['base_path'], 'checkpoint.chpt')
 
 config['dbpedia'] = {'base_path': os.path.join(config['data_path'], 'dbpedia')}
 config['dbpedia'] = {
-    'entities': os.path.join(config['dbpedia']['base_path'], 'entities.json')
+    'entities': os.path.join(config['dbpedia']['base_path'], 'entities.json'),
+    'relations': os.path.join(config['dbpedia']['base_path'], 'relations.json')
 }
 
 config['lc_quad'] = {'base_path': os.path.join(config['data_path'], 'lcquad')}

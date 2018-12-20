@@ -4,56 +4,100 @@ from tqdm import tqdm
 
 
 class Elastic:
-    def __init__(self, server, entity_index_config, entities_path, index_name='idx', create_entity_index=False):
+    def __init__(self, server):
         self.es = Elasticsearch(hosts=[server])
 
-        if create_entity_index:
-            batch_size = 100000
-            delete_index = True
+    def create_entity_index(self, entity_index_config, entities_path, index_name='idx'):
+        batch_size = 100000
+        delete_index = True
 
-            type_name = 'resources'
-            bulk_data = []
-            counter = 0
-            with open(entities_path, 'r', encoding='utf-8') as file_handler:
-                for line in tqdm(file_handler):
-                    json_object = json.loads(line)['_source']
-                    if 'http://dbpedia.org/' in json_object['uri']:
-                        dtype = 'uri'
-                    else:
-                        dtype = 'literal'
-                    label = ''
-                    if 'dbpediaLabel' in json_object:
-                        label = json_object['dbpediaLabel']
-                    elif 'wikidataLabel' in json_object:
-                        label = json_object['wikidataLabel']
-                    if 'dbpediaLabel' in json_object and 'wikidataLabel' in json_object:
-                        print(json_object)
+        type_name = 'resources'
+        bulk_data = []
+        counter = 0
+        with open(entities_path, 'r', encoding='utf-8') as file_handler:
+            for line in tqdm(file_handler):
+                json_object = json.loads(line)['_source']
+                if 'http://dbpedia.org/' in json_object['uri']:
+                    dtype = 'uri'
+                else:
+                    dtype = 'literal'
+                label = ''
+                if 'dbpediaLabel' in json_object:
+                    label = json_object['dbpediaLabel']
+                elif 'wikidataLabel' in json_object:
+                    label = json_object['wikidataLabel']
+                if 'dbpediaLabel' in json_object and 'wikidataLabel' in json_object:
+                    print(json_object)
 
-                    if len(label) <= 2 or len(label) > 70:
-                        continue
-                    label = label.lower()
-                    data_dict = {'key': json_object['uri'],
-                                 'dtype': dtype,
-                                 'label': label,
-                                 'edge_count': json_object['edgecount']}
-                    op_dict = {"index": {"_index": index_name, "_type": type_name}}
-                    bulk_data.append(op_dict)
-                    bulk_data.append(data_dict)
-                    if counter > 0 and counter % batch_size == 0:
-                        self.__bulk_indexing(index_name=index_name,
-                                             delete_index=delete_index,
-                                             index_config=entity_index_config,
-                                             bulk_data=bulk_data)
-                        bulk_data = []
-                        delete_index = False
-                    counter += 1
-                if len(bulk_data) > 0:
-                    self.__bulk_indexing(index_name=index_name,
-                                         delete_index=delete_index,
-                                         index_config=entity_index_config,
-                                         bulk_data=bulk_data)
+                if len(label) <= 2 or len(label) > 70:
+                    continue
+                label = label.lower()
+                data_dict = {'key': json_object['uri'],
+                             'dtype': dtype,
+                             'label': label,
+                             'edge_count': json_object['edgecount']}
+                op_dict = {"index": {"_index": index_name, "_type": type_name}}
+                bulk_data.append(op_dict)
+                bulk_data.append(data_dict)
+                if counter > 0 and counter % batch_size == 0:
+                    print(bulk_data[1])
+                    print(bulk_data[-1])
+                    self.bulk_indexing(index_name=index_name,
+                                       delete_index=delete_index,
+                                       index_config=entity_index_config,
+                                       bulk_data=bulk_data)
+                    bulk_data = []
+                    delete_index = False
+                counter += 1
+            if len(bulk_data) > 0:
+                self.bulk_indexing(index_name=index_name,
+                                   delete_index=delete_index,
+                                   index_config=entity_index_config,
+                                   bulk_data=bulk_data)
 
-    def __bulk_indexing(self, index_name, delete_index, index_config, bulk_data):
+    def create_relation_index(self, relation_index_config, relations_path, index_name='idx'):
+        batch_size = 100000
+        delete_index = True
+
+        type_name = 'resources'
+        bulk_data = []
+        counter = 0
+        with open(relations_path, 'r', encoding='utf-8') as file_handler:
+            for line in tqdm(file_handler):
+                json_object = json.loads(line)['_source']
+                if 'http://dbpedia.org/' in json_object['uri']:
+                    dtype = 'uri'
+                else:
+                    dtype = 'literal'
+                label = ''
+                if 'mergedLabel' in json_object:
+                    label = json_object['mergedLabel']
+
+                if len(label) <= 2 or len(label) > 70:
+                    continue
+                label = label.lower()
+                data_dict = {'key': json_object['uri'],
+                             'dtype': dtype,
+                             'label': label
+                             }
+                op_dict = {"index": {"_index": index_name, "_type": type_name}}
+                bulk_data.append(op_dict)
+                bulk_data.append(data_dict)
+                if counter > 0 and counter % batch_size == 0:
+                    self.bulk_indexing(index_name=index_name,
+                                       delete_index=delete_index,
+                                       index_config=relation_index_config,
+                                       bulk_data=bulk_data)
+                    bulk_data = []
+                    delete_index = False
+                counter += 1
+            if len(bulk_data) > 0:
+                self.bulk_indexing(index_name=index_name,
+                                   delete_index=delete_index,
+                                   index_config=relation_index_config,
+                                   bulk_data=bulk_data)
+
+    def bulk_indexing(self, index_name, delete_index, index_config, bulk_data):
         if delete_index:
             if self.es.indices.exists(index_name):
                 print("deleting '{}' index...".format(index_name))
@@ -70,7 +114,7 @@ class Elastic:
         print("bulk indexing done")
         return res
 
-    def search_ngram(self, text, index, constraint=None, size=10):
+    def search_index(self, text, index, constraint=None, size=10):
         output = []
         if constraint is None:
             results = self.es.search(index=index, doc_type='resources', size=size, body={
@@ -80,6 +124,18 @@ class Elastic:
             results = self.es.search(index=index, doc_type='resources', size=size, body={
                 'query': {'bool': {'must': [{'match': {'label': text}}, {'match': {'dtype': constraint}}]}}
             })
+        if results['hits']['total'] > 0:
+            output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
+        else:
+            print(results)
+        return output
+
+    def search_term(self, text, index, size=10):
+        output = []
+        results = self.es.search(index=index, doc_type='resources', size=size, body={
+            'query': {'term': {'key': text, }}
+        })
+
         if results['hits']['total'] > 0:
             output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
         else:
