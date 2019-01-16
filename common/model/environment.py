@@ -55,7 +55,7 @@ class Environment:
     def step(self, action, action_probs, qarow, k, train):
         detailed_rewards = []
         step_reward = 0
-        mrr = 0
+        relation_mrr, entity_mrr = 0, 0
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
@@ -63,11 +63,18 @@ class Environment:
         self.action_seq.append(action)
         is_done = self.is_done()
         if is_done:
+            self.logger.debug(qarow.question)
+            if self.logger.level == logging.DEBUG:
+                for word, prob in zip(qarow.normalized_question, action_probs):
+                    Utils.print_color(word, bg=Utils.rgb(*prob), end=' ')
+                print()
+            self.logger.debug(list(zip(qarow.normalized_question,
+                                       [['{:0.2f}'.format(item) for item in probs] for probs in action_probs])))
             if len(self.action_seq) != len(self.input_seq):
                 step_reward = self.negative_reward
             else:
                 cache_key = qarow.question + ''.join(map(str, map(int, self.action_seq)))
-                if self.cache.has(cache_key):
+                if train and self.cache.has(cache_key):
                     step_reward, mrr = self.cache.get(cache_key)
                 else:
                     last_tag = 0
@@ -92,16 +99,29 @@ class Environment:
 
                     relation_results, relation_score, relation_mrr = self.relation_linker.best_ranks(list(surfaces[0]),
                                                                                                      qarow, k, train)
+                    relation_results = [0 if item < 0.4 else item for item in relation_results]
                     if relation_score < 0.6:
                         relation_score = self.negative_reward
                     entity_results, entity_score, entity_mrr = self.entity_linker.best_ranks(list(surfaces[1]), qarow,
                                                                                              k, train)
+
+                    entity_results = [0 if item < 0.4 else item for item in entity_results]
                     if entity_score < 0.6:
                         entity_score = self.negative_reward
                     step_reward = (relation_score + entity_score) / 2
+
+                    z = 0
                     if step_reward < 0.3:
                         step_reward = self.negative_reward
-                    mrr = (relation_mrr + entity_mrr) / 2
+                    elif step_reward > 0.95:
+                        z = 100
+                    elif step_reward > 0.9:
+                        z = 10
+                    # elif step_reward > 0.7:
+                    #     z = 3
+                    elif step_reward > 0.5:
+                        z = 1
+                    #     step_reward *= 100
 
                     rel_idx = 0
                     rel_cntr = 0
@@ -109,32 +129,24 @@ class Environment:
                     ent_cntr = 0
                     for idx, item in enumerate(self.input_seq):
                         if self.action_seq[idx] == 0:
-                            detailed_rewards.append(0.3)
+                            detailed_rewards.append(z)  # len(self.input_seq) * 2.5 / 100
+                            pass
                         elif self.action_seq[idx] == 1:
-                            # if rel_idx < len(surfaces[0]) and item in surfaces[0][rel_idx]:
                             detailed_rewards.append(relation_results[rel_idx])
                             rel_cntr += 1
                             if rel_cntr == len(surfaces[0][rel_idx]):
                                 rel_idx += 1
                                 rel_cntr = 0
                         elif self.action_seq[idx] == 2:
-                            # if ent_idx < len(surfaces[1]) and item in surfaces[1][ent_idx]:
                             detailed_rewards.append(entity_results[ent_idx])
                             ent_cntr += 1
                             if ent_cntr == len(surfaces[1][ent_idx]):
                                 ent_idx += 1
                                 ent_cntr = 0
-
+                    # detailed_rewards = [0] * len(self.input_seq)
                     # if train:
                     #     self.cache.add(cache_key, (step_reward, mrr))
 
-                self.logger.debug(qarow.question)
-                if self.logger.level == logging.DEBUG:
-                    for word, prob in zip(qarow.normalized_question, action_probs):
-                        Utils.print_color(word, bg=Utils.rgb(*prob), end=' ')
-                    print()
-                self.logger.debug(list(zip(qarow.normalized_question,
-                                           [['{:0.2f}'.format(item) for item in probs] for probs in action_probs])))
-                self.logger.debug(mrr)
+                self.logger.debug(list(map('{:0.2f}'.format, [entity_mrr, relation_mrr])))
                 self.logger.debug('')
-        return self.state, detailed_rewards, step_reward, is_done, mrr
+        return self.state, detailed_rewards, step_reward, is_done, relation_mrr, entity_mrr
