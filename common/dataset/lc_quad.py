@@ -18,7 +18,7 @@ class LC_QuAD:
         self.corpus = self.train_corpus + self.test_corpus
         if not os.path.isfile(vocab_path):
             self.__build_vocab(self.corpus, vocab_path)
-        self.vocab = Vocab(filename=vocab_path, data=['<ent>'])
+        self.vocab = Vocab(filename=vocab_path, data=['<ent>', '<num>'])
         self.word_vectorizer = Glove(self.vocab, config['glove_path'], config['lc_quad']['emb'])
         # self.__update_relations_emb()
 
@@ -38,10 +38,12 @@ class LC_QuAD:
                              remove_entity_mention, remove_stop_words)
                        for item in
                        raw_dataset]
-            # with open('/Users/hamid/workspace/DeepShallowParsingQA/data/lcquad/no_constraints.json', 'r') as f:
-            #     no_contraints = json.load(f)
-            #     dataset = [row for row in dataset if row.question in no_contraints]
-            dataset = [row for row in dataset if len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1]
+            with open('/Users/hamid/workspace/DeepShallowParsingQA/data/lcquad/no_constraints.json', 'r') as f:
+                no_contraints = json.load(f)
+                dataset = [row for row in dataset if row.question in no_contraints]
+            # dataset = [row for row in dataset if  (len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1)]
+            # dataset = [row for row in dataset if len(row.normalized_question) == 3]
+            dataset = dataset[0:100]
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus
 
@@ -72,7 +74,9 @@ class LC_QuAD:
             if len(item[2]) > max_length:
                 idxs = []
             else:
-                idxs = [self.vocab.getIndex(word.lower().replace('.', '')) for word in item[2]]
+                idxs = [self.vocab.getIndex(
+                    word.lower().replace('.', '') if not word.replace('.', '').replace('(', '').isdigit() else '<num>')
+                    for word in item[2]]
                 idxs = [id for id in idxs if id is not None]
             length = len(idxs)
             if length == 0:
@@ -94,6 +98,7 @@ class LC_QuAD:
             vocab |= set(tokens)
         relations_vocab = self.__load_candidate_relations()
         vocab |= relations_vocab
+        vocab = [w for w in vocab if not w.replace('.', '').replace('(', '').isdigit()]
         if '<ent>' in vocab:
             vocab.remove('<ent>')
         with open(vocab_path, 'w', encoding='utf-8') as f:

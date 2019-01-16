@@ -24,6 +24,8 @@ class QARow:
                     output.append('<ent>')
             elif remove_stop_words and word in QARow.stop_words:
                 pass
+            elif word.replace('.', '').replace('(', '').isdigit():
+                output.append('<num>')
             else:
                 output.append(word)
         return output
