@@ -16,7 +16,7 @@ from common.linkers.entityOrderedLinker import EntityOrderedLinker
 from common.linkers.sorter.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.sorter.embeddingSimilaritySorter import EmbeddingSimilaritySorter
 from common.linkers.candidate_generator.graphCG import GraphCG
-from common.linkers.candidate_generator.ngramCG import NGramLinker
+from common.linkers.candidate_generator.elasticLinker import ElasticLinker
 from common.linkers.candidate_generator.datasetCG import DatasetCG
 from common.linkers.candidate_generator.elastic import Elastic
 from common.utils import *
@@ -25,17 +25,13 @@ from common.utils import *
 class Runner:
     def __init__(self, lc_quad, args):
         self.logger = logging.getLogger('main')
-        word_vectorizer = lc_quad.word_vectorizer
-        self.elastic = Elastic(config['elastic']['server'],
-                               config['elastic']['entity_ngram_index_config'],
-                               config['dbpedia']['entities'],
-                               index_name='entity_whole_match',
-                               create_entity_index=False)
+        self.word_vectorizer = lc_quad.word_vectorizer
+        self.elastic = Elastic(config['elastic']['server'])
         # string_similarity_metric = similarity.ngram.NGram(2).distance
         # string_similarity_metric = similarity.levenshtein.Levenshtein().distance
         # string_similarity_metric = jellyfish.levenshtein_distance
         entity_linker = EntityOrderedLinker(
-            candidate_generator=DatasetCG(lc_quad),
+            candidate_generator=DatasetCG(lc_quad, entity=True),
             sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, return_similarity=True)],
             vocab=lc_quad.vocab)
 
@@ -44,16 +40,16 @@ class Runner:
                                         core_chains_path=config['lc_quad']['core_chains'],
                                         dataset=lc_quad),
             sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True),
-                     EmbeddingSimilaritySorter(word_vectorizer)],
+                     EmbeddingSimilaritySorter(self.word_vectorizer)],
             vocab=lc_quad.vocab)
 
         policy_network = Policy(vocab_size=lc_quad.vocab.size(),
-                                emb_size=word_vectorizer.word_size,
-                                input_size=word_vectorizer.word_size * 3 + 1 + 1,
-                                hidden_size=word_vectorizer.word_size,
+                                emb_size=self.word_vectorizer.word_size,
+                                input_size=self.word_vectorizer.word_size * 3 + 1 + 1,
+                                hidden_size=self.word_vectorizer.word_size,
                                 output_size=3,
                                 dropout_ratio=args.dropout)
-        policy_network.emb.weight.data.copy_(word_vectorizer.emb)
+        policy_network.emb.weight.data.copy_(self.word_vectorizer.emb)
         self.agent = Agent(number_of_relations=2,
                            gamma=args.gamma,
                            policy_network=policy_network,
@@ -79,19 +75,22 @@ class Runner:
 
     @profile
     def train(self, lc_quad, args, checkpoint_filename=config['checkpoint_path']):
-        total_reward, total_rmm, total_loss = [], [], []
+        total_reward, total_relation_rmm, total_entity_rmm, total_loss = [], [], [], []
         max_rmm, max_rmm_index = 0, -1
         iter = tqdm(range(args.epochs))
         history = {' '.join(qarow.normalized_question): [] for qarow in lc_quad.train_set}
         self.agent.policy_network.zero_grad()
         for epoch in iter:
             for idx, qarow in enumerate(lc_quad.train_set):
-                reward, mrr, loss, actions = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e, k=args.k,
-                                                       train=True)
+                reward, relation_mrr, entity_mrr, loss, actions = self.step(lc_quad.coded_train_corpus[idx], qarow,
+                                                                            e=args.e, k=args.k,
+                                                                            train=True)
                 total_reward.append(reward)
-                total_rmm.append(mrr)
+                total_entity_rmm.append(entity_mrr)
+                total_relation_rmm.append(relation_mrr)
                 total_loss.append(loss)
-                history[' '.join(qarow.normalized_question)].append(actions.__str__() + '{:0.2f}'.format(reward))
+                history[' '.join(qarow.normalized_question)].append(
+                    actions.__str__() + '{:0.2f},{:0.2f},{:0.2f}'.format(entity_mrr, relation_mrr, reward))
                 if idx % args.batchsize == 0:
                     self.agent.policy_optimizer.step()
                     self.agent.policy_network.zero_grad()
@@ -100,31 +99,48 @@ class Runner:
             self.agent.policy_network.zero_grad()
 
             if epoch > 0 and epoch % 10 == 0:
-                mean_rmm = np.mean(total_rmm)
-                print(np.mean(total_reward), mean_rmm, np.mean(total_loss))
-                total_reward, total_rmm, total_loss = [], [], []
+                mean_rmm = [np.mean(total_entity_rmm), np.mean(total_relation_rmm)]
+                print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss)] + mean_rmm)))
+                total_reward, total_relation_rmm, total_entity_rmm, total_loss = [], [], [], []
                 self.save_checkpoint(checkpoint_filename)
-                if mean_rmm > max_rmm:
-                    max_rmm = mean_rmm
+                if sum(mean_rmm) > max_rmm:
+                    max_rmm = sum(mean_rmm)
                     max_rmm_index = epoch
                 # else:
                 #     if epoch >= max_rmm_index + 30:
-                #         iter.close()
+                #         iter.close()•
                 #         break
         if len(total_reward) > 0:
-            print(np.mean(total_reward), np.mean(total_rmm), np.mean(total_loss))
+            print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss), np.mean(total_entity_rmm),
+                                              np.mean(total_relation_rmm)])))
 
     def test(self, lc_quad, args):
-        self.environment.entity_linker.candidate_generator = NGramLinker(self.elastic, index_name='entity_whole_match')
-        self.environment.entity_linker.sorters = [StringSimilaritySorter(similarity.ngram.NGram(2).distance)]
-        total_rmm = []
-        for idx, qarow in enumerate(lc_quad.test_set):
-            reward, mrr, loss, _ = self.step(lc_quad.coded_test_corpus[idx], qarow, e=args.e, train=False,
-                                             k=args.k)
-            total_rmm.append(mrr)
-        total = np.mean(total_rmm)
-        print(total)
-        return total
+        self.environment.entity_linker = EntityOrderedLinker(
+            candidate_generator=ElasticLinker(self.elastic, index_name='entity_whole_match_index'),
+            sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance)],
+            vocab=lc_quad.vocab)
+
+        self.environment.relation_linker = RelationOrderedLinker(
+            candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
+                                        core_chains_path=config['lc_quad']['core_chains'],
+                                        dataset=lc_quad),
+            # candidate_generator=ElasticLinker(self.elastic, index_name='relation_whole_match_index'),
+            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True),
+                     ],  # EmbeddingSimilaritySorter(self.word_vectorizer)],
+            vocab=lc_quad.vocab)
+        total_relation_mrr, total_entity_mrr = [], []
+        for idx, qarow in enumerate(lc_quad.train_set):
+            reward, relation_mrr, entity_mrr, loss, _ = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e,
+                                                                  train=False,
+                                                                  k=args.k)
+            total_relation_mrr.append(relation_mrr)
+            total_entity_mrr.append(entity_mrr)
+
+        total_entity_mrr = np.mean(total_entity_mrr)
+        total_relation_mrr = np.mean(total_relation_mrr)
+        print('entity MRR', total_entity_mrr)
+        print('relation MRR', total_relation_mrr)
+        return total_entity_mrr, total_relation_mrr
 
     @profile
     def step(self, input, qarow, e, train=True, k=0):
@@ -138,8 +154,8 @@ class Runner:
             actions.append(int(action))
             action_log_probs.append(action_log_prob)
             action_probs.append(action_prob)
-            new_state, detailed_rewards, total_reward, done, mrr = self.environment.step(action, action_probs, qarow, k,
-                                                                                         train=train)
+            new_state, detailed_rewards, total_reward, done, relation_mrr, entity_mrr = \
+                self.environment.step(action, action_probs, qarow, k, train=train)
             running_reward += total_reward
             # rewards.append(total_reward)
             state = new_state
@@ -147,5 +163,6 @@ class Runner:
                 if train:
                     loss = self.agent.backward(detailed_rewards, total_reward, action_log_probs)
                 break
+            running_reward = min(running_reward, 1)
         del action_log_prob
-        return running_reward, mrr, loss, actions
+        return running_reward, relation_mrr, entity_mrr, loss, actions
