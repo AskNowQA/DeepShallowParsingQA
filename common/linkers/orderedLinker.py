@@ -39,44 +39,50 @@ class OrderedLinker:
              zip(range(len(candidates[1]) - 1, -1, -1), reversed(candidates[1]))}
             for candidates in output]
         output2 = []
-        for target_uri in target_uris:
+        change_target_uris = []
+        not_found_target_uri = [target_uri.raw_uri for target_uri in target_uris]
+        # for k in range(2):
+        for target_uri in not_found_target_uri:
+            found = False
             for candidates_idx, candidates in enumerate(output):
                 surface = candidates[0]
                 candidates = candidates[1]
                 number_of_candidates = len(candidates)
-                if target_uri.raw_uri in candidates_dict[candidates_idx]:
-                    idx = candidates_dict[candidates_idx][target_uri.raw_uri]
+                if target_uri in candidates_dict[candidates_idx]:
+                    idx = candidates_dict[candidates_idx][target_uri]
                     if idx >= 1 and output[candidates_idx][1][idx][1] == output[candidates_idx][1][idx - 1][1]:
                         idx -= 1
-                    output2.append([target_uri, candidates_idx, 1 - idx / number_of_candidates, idx, surface])
+                    score = 1 - idx / number_of_candidates
+                    if self.include_similarity_score and isinstance(output[candidates_idx][1][idx][-1], float):
+                        score *= output[candidates_idx][1][idx][-1]
+                    output2.append([target_uri, candidates_idx, score, idx, surface])
+                    found = True
+            if not found and target_uri not in change_target_uris:
+                if '/property/' in target_uri:
+                    new_uri = target_uri.replace('/property/', '/ontology/')
+                    not_found_target_uri.append(new_uri)
+                    change_target_uris.append(new_uri)
+                elif '/ontology/' in target_uri:
+                    new_uri = target_uri.replace('/ontology/', '/property/')
+                    not_found_target_uri.append(new_uri)
+                    change_target_uris.append(new_uri)
         output2.sort(key=lambda x: x[2], reverse=True)
-        used_uris, used_candidates, scores, rank = [], [], [], []
+        used_uris, used_candidates, rank, scores = [], [], [], [0] * len(surfaces)
         for item in output2:
+            surface_idx = surfaces.index(item[4])
             if item[0] in used_uris or item[1] in used_candidates:
-                scores.append(0)
+                pass
             else:
                 used_uris.append(item[0])
                 used_candidates.append(item[1])
-                tmp = 1
-                if self.include_similarity_score and isinstance(output[item[1]][1][item[3]][-1], float):
-                    tmp = output[item[1]][1][item[3]][-1]
-                scores.append(item[2] * tmp)
+                scores[surface_idx] = item[2]
                 if train:
-                    if scores[-1] > 0.5 and item[3] <= k:
+                    if scores[surface_idx] > 0.5 and item[3] <= k:
                         rank.append(item[3])
                 elif item[3] <= k:
                     rank.append(item[3])
         max_len = max(len(target_uris), len(surfaces))
         if k >= 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
-        result = []
-        for surface in surfaces:
-            found = False
-            for idx, item in enumerate(output2):
-                if surface == item[4]:
-                    result.append(scores[idx])
-                    found = True
-            if not found:
-                result.append(0.0)
 
-        return result, sum(scores) / max_len, mrr
+        return scores, sum(scores) / max_len, mrr
