@@ -16,7 +16,7 @@ if __name__ == '__main__':
         if 'entit' in args.index_name:
             # index_config =config['elastic']['entity_ngram_index_config']
             index_config = config['elastic']['entity_whole_match_index_config']
-            e.create_entity_index(index_config,
+            e.create_index(index_config,
                                   config['dbpedia']['entities'],
                                   index_name=args.index_name)
             dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
@@ -38,7 +38,7 @@ if __name__ == '__main__':
             e.bulk_indexing(args.index_name, delete_index=False, index_config=index_config, bulk_data=bulk_data)
 
         elif 'relation' in args.index_name:
-            e.create_relation_index(config['elastic']['relation_whole_match_index_config'],
+            e.create_index(config['elastic']['relation_whole_match_index_config'],
                                     config['dbpedia']['relations'],
                                     index_name=args.index_name)
     print(e.search_index(args.search, args.index_name, size=args.size))

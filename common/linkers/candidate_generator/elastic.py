@@ -1,23 +1,26 @@
 from elasticsearch import Elasticsearch
 import ujson as json
 from tqdm import tqdm
+import re
 
 
 class Elastic:
     def __init__(self, server):
         self.es = Elasticsearch(hosts=[server])
 
-    def create_entity_index(self, entity_index_config, entities_path, index_name='idx'):
+    def create_index(self, index_config, input_path, index_name='idx'):
         batch_size = 100000
         delete_index = True
 
         type_name = 'resources'
         bulk_data = []
         counter = 0
-        with open(entities_path, 'r', encoding='utf-8') as file_handler:
+        uris = []
+        with open(input_path, 'r', encoding='utf-8') as file_handler:
             for line in tqdm(file_handler):
                 json_object = json.loads(line)['_source']
-                if 'http://dbpedia.org/' in json_object['uri']:
+                uri = json_object['uri']
+                if 'http://dbpedia.org/' in uri:
                     dtype = 'uri'
                 else:
                     dtype = 'literal'
@@ -26,67 +29,39 @@ class Elastic:
                     label = json_object['dbpediaLabel']
                 elif 'wikidataLabel' in json_object:
                     label = json_object['wikidataLabel']
-                if 'dbpediaLabel' in json_object and 'wikidataLabel' in json_object:
-                    print(json_object)
-
-                if len(label) <= 2 or len(label) > 70:
-                    continue
-                label = label.lower()
-                data_dict = {'key': json_object['uri'],
-                             'dtype': dtype,
-                             'label': label,
-                             'edge_count': json_object['edgecount']}
-                op_dict = {"index": {"_index": index_name, "_type": type_name}}
-                bulk_data.append(op_dict)
-                bulk_data.append(data_dict)
-                if counter > 0 and counter % batch_size == 0:
-                    print(bulk_data[1])
-                    print(bulk_data[-1])
-                    self.bulk_indexing(index_name=index_name,
-                                       delete_index=delete_index,
-                                       index_config=entity_index_config,
-                                       bulk_data=bulk_data)
-                    bulk_data = []
-                    delete_index = False
-                counter += 1
-            if len(bulk_data) > 0:
-                self.bulk_indexing(index_name=index_name,
-                                   delete_index=delete_index,
-                                   index_config=entity_index_config,
-                                   bulk_data=bulk_data)
-
-    def create_relation_index(self, relation_index_config, relations_path, index_name='idx'):
-        batch_size = 100000
-        delete_index = True
-
-        type_name = 'resources'
-        bulk_data = []
-        counter = 0
-        with open(relations_path, 'r', encoding='utf-8') as file_handler:
-            for line in tqdm(file_handler):
-                json_object = json.loads(line)['_source']
-                if 'http://dbpedia.org/' in json_object['uri']:
-                    dtype = 'uri'
-                else:
-                    dtype = 'literal'
-                label = ''
-                if 'mergedLabel' in json_object:
+                elif 'mergedLabel' in json_object:
                     label = json_object['mergedLabel']
 
                 if len(label) <= 2 or len(label) > 70:
                     continue
                 label = label.lower()
-                data_dict = {'key': json_object['uri'],
+                data_dict = {'key': uri,
                              'dtype': dtype,
                              'label': label
                              }
+                if 'edgecount' in json_object:
+                    data_dict['edge_count'] = json_object['edgecount']
                 op_dict = {"index": {"_index": index_name, "_type": type_name}}
                 bulk_data.append(op_dict)
                 bulk_data.append(data_dict)
+                if uri not in uris:
+                    label = uri[uri.rindex('/') + 1:]
+                    label = re.sub(r"([A-Z])", r" \1", label).replace('_', ' ')
+                    data_dict = {'key': uri,
+                                 'dtype': dtype,
+                                 'label': label
+                                 }
+                    if 'edgecount' in json_object:
+                        data_dict['edge_count'] = json_object['edgecount']
+                    op_dict = {"index": {"_index": index_name, "_type": type_name}}
+                    bulk_data.append(op_dict)
+                    bulk_data.append(data_dict)
+                    uris.append(uri)
+
                 if counter > 0 and counter % batch_size == 0:
                     self.bulk_indexing(index_name=index_name,
                                        delete_index=delete_index,
-                                       index_config=relation_index_config,
+                                       index_config=index_config,
                                        bulk_data=bulk_data)
                     bulk_data = []
                     delete_index = False
@@ -94,7 +69,7 @@ class Elastic:
             if len(bulk_data) > 0:
                 self.bulk_indexing(index_name=index_name,
                                    delete_index=delete_index,
-                                   index_config=relation_index_config,
+                                   index_config=index_config,
                                    bulk_data=bulk_data)
 
     def bulk_indexing(self, index_name, delete_index, index_config, bulk_data):
