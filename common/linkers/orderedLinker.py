@@ -67,14 +67,15 @@ class OrderedLinker:
                     not_found_target_uri.append(new_uri)
                     change_target_uris.append(new_uri)
         output2.sort(key=lambda x: x[2], reverse=True)
-        used_uris, used_candidates, rank, scores = [], [], [], [0] * len(surfaces)
+        used_uris, used_candidates, used_surfaces, rank, scores = [], [], [], [], [0] * len(surfaces)
         for item in output2:
             surface_idx = surfaces.index(item[4])
-            if item[0] in used_uris or item[1] in used_candidates:
+            if item[0] in used_uris or item[1] in used_candidates or item[4] in used_surfaces:
                 pass
             else:
                 used_uris.append(item[0])
                 used_candidates.append(item[1])
+                used_surfaces.append(item[4])
                 scores[surface_idx] = item[2]
                 if train:
                     if scores[surface_idx] > 0.5 and item[3] <= k:
