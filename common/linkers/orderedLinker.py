@@ -10,10 +10,11 @@ class OrderedLinker:
         self.vocab = vocab
         self.logger = logging.getLogger('main')
         self.include_similarity_score = include_similarity_score
+        self.history = {}
 
     @profile
     def link(self, surface, question):
-        string_surface = ' '.join(self.vocab.convertToLabels(surface))
+        string_surface = ' '.join(surface)
         unordered_results = self.candidate_generator.generate(string_surface, question)
         return [[surface, sorter.sort(string_surface, question, unordered_results)] for sorter in self.sorters]
 
@@ -40,7 +41,8 @@ class OrderedLinker:
             for candidates in output]
         output2 = []
         change_target_uris = []
-        not_found_target_uri = [target_uri.raw_uri for target_uri in target_uris]
+        target_raw_uris = [target_uri.raw_uri for target_uri in target_uris]
+        not_found_target_uri = list(target_raw_uris)
         # for k in range(2):
         for target_uri in not_found_target_uri:
             found = False
@@ -67,7 +69,13 @@ class OrderedLinker:
                     not_found_target_uri.append(new_uri)
                     change_target_uris.append(new_uri)
         output2.sort(key=lambda x: x[2], reverse=True)
-        used_uris, used_candidates, used_surfaces, rank, scores = [], [], [], [], [0] * len(surfaces)
+
+        if question not in self.history:
+            self.history[question] = {}
+        question_history = self.history[question]
+
+        used_uris, used_candidates, used_surfaces, rank = [], [], [], []
+        scores = [[0] * len(surface) for surface in surfaces]
         for item in output2:
             surface_idx = surfaces.index(item[4])
             if item[0] in used_uris or item[1] in used_candidates or item[4] in used_surfaces:
@@ -76,14 +84,26 @@ class OrderedLinker:
                 used_uris.append(item[0])
                 used_candidates.append(item[1])
                 used_surfaces.append(item[4])
-                scores[surface_idx] = item[2]
+                if item[0] in question_history:
+                    best_score, best_surface = question_history[item[0]]
+                    if max(best_score) > item[2]:
+                        scores[surface_idx] = [max(best_score) if surface in best_surface else 0 for surface in
+                                               item[4]]
+                    else:
+                        scores[surface_idx] = [item[2]] * len(item[4])
+                        question_history[item[0]] = (scores[surface_idx], item[4])
+                else:
+                    scores[surface_idx] = [item[2]] * len(item[4])
+                    question_history[item[0]] = (scores[surface_idx], item[4])
+
                 if train:
-                    if scores[surface_idx] > 0.5 and item[3] <= k:
+                    if max(scores[surface_idx]) > 0.5 and item[3] <= k:
                         rank.append(item[3])
                 elif item[3] <= k:
                     rank.append(item[3])
         max_len = max(len(target_uris), len(surfaces))
         if k >= 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
+        mean_score = sum(map(sum, scores)) / sum(map(len, scores))
 
-        return scores, sum(scores) / max_len, mrr
+        return scores, mean_score / max_len, mrr
