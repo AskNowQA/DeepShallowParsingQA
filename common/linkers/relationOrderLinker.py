@@ -12,7 +12,7 @@ class RelationOrderedLinker(OrderedLinker):
                                                                 k,
                                                                 train)
 
-        self.logger.debug([' '.join(self.vocab.convertToLabels(item)) for item in surfaces])
+        self.logger.debug([' '.join(item) for item in surfaces])
         self.logger.debug([rel.raw_uri for rel in qa_row.sparql.relations])
         self.logger.debug(list(map('{:0.2f}'.format, results[1:])))
 
