@@ -50,7 +50,10 @@ class Agent:
         discounted_r = torch.zeros((len(detailed_rewards)))
         running_add = total_reward
         for t in reversed(range(0, len(detailed_rewards))):
-            discounted_r[t] = min(running_add + detailed_rewards[t], 1)
+            if detailed_rewards[t] >= 0.9:
+                discounted_r[t] = detailed_rewards[t]
+            else:
+                discounted_r[t] = min(running_add + detailed_rewards[t], 1)
             running_add = running_add * self.gamma
 
         # reward_mean = np.mean(discounted_r)
