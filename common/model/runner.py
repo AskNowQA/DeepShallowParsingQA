@@ -45,7 +45,7 @@ class Runner:
 
         policy_network = Policy(vocab_size=lc_quad.vocab.size(),
                                 emb_size=self.word_vectorizer.word_size,
-                                input_size=self.word_vectorizer.word_size * 3 + 1 + 1,
+                                input_size=(self.word_vectorizer.word_size + 1) * 3 + 1 + 1,
                                 hidden_size=self.word_vectorizer.word_size,
                                 output_size=3,
                                 dropout_ratio=args.dropout)
@@ -80,11 +80,16 @@ class Runner:
         iter = tqdm(range(args.epochs))
         history = {' '.join(qarow.normalized_question): [] for qarow in lc_quad.train_set}
         self.agent.policy_network.zero_grad()
+        e = args.e
         for epoch in iter:
             for idx, qarow in enumerate(lc_quad.train_set):
-                reward, relation_mrr, entity_mrr, loss, actions = self.step(lc_quad.coded_train_corpus[idx], qarow,
-                                                                            e=args.e, k=args.k,
-                                                                            train=True)
+                reward, relation_mrr, entity_mrr, loss, actions = self.step(
+                    lc_quad.coded_train_corpus[idx],
+                    qarow.lower_indicator,
+                    qarow,
+                    e=e,
+                    k=args.k,
+                    train=True)
                 total_reward.append(reward)
                 total_entity_rmm.append(entity_mrr)
                 total_relation_rmm.append(relation_mrr)
@@ -99,6 +104,7 @@ class Runner:
             self.agent.policy_network.zero_grad()
 
             if epoch > 0 and epoch % 10 == 0:
+                e = max(e - 0.001, 0.1)
                 mean_rmm = [np.mean(total_entity_rmm), np.mean(total_relation_rmm)]
                 print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss)] + mean_rmm)))
                 total_reward, total_relation_rmm, total_entity_rmm, total_loss = [], [], [], []
@@ -130,9 +136,15 @@ class Runner:
             vocab=lc_quad.vocab)
         total_relation_mrr, total_entity_mrr = [], []
         for idx, qarow in enumerate(lc_quad.train_set):
-            reward, relation_mrr, entity_mrr, loss, _ = self.step(lc_quad.coded_train_corpus[idx], qarow, e=args.e,
-                                                                  train=False,
-                                                                  k=args.k)
+            reward, relation_mrr, entity_mrr, loss, _ = self.step(
+                lc_quad.coded_train_corpus[idx],
+        # for idx, qarow in enumerate(lc_quad.test_set):
+        #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
+        #         lc_quad.coded_test_corpus[idx],
+                qarow.lower_indicator, qarow,
+                e=args.e,
+                train=False,
+                k=args.k)
             total_relation_mrr.append(relation_mrr)
             total_entity_mrr.append(entity_mrr)
 
@@ -143,11 +155,11 @@ class Runner:
         return total_entity_mrr, total_relation_mrr
 
     @profile
-    def step(self, input, qarow, e, train=True, k=0):
+    def step(self, input, lower_indicator, qarow, e, train=True, k=0):
         rewards, action_log_probs, action_probs, actions = [], [], [], []
         loss = 0
         running_reward = 0
-        self.environment.init(input)
+        self.environment.init(input, lower_indicator)
         state = self.environment.state
         while True:
             action, action_log_prob, action_prob = self.agent.select_action(state, e, train)
