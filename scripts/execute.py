@@ -28,10 +28,10 @@ if __name__ == '__main__':
     runner = Runner(lc_quad, args)
 
     if args.mode == 'test':
-        logger.setLevel(logging.DEBUG)
         runner.load_checkpoint()
     else:
         runner.train(lc_quad, args)
+    logger.setLevel(logging.DEBUG)
     runner.test(lc_quad, args)
     finish = time.time()
     print('total runtime:', finish - start)
