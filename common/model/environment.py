@@ -17,6 +17,7 @@ class Environment:
         self.input_seq_size = 0
         self.seq_counter = 0
         self.action_seq = []
+        self.split_action_seq = []
         self.num_surface = 0
         self.logger = logging.getLogger('main')
         self.cache = Cache(config['env_cache_path'])
@@ -28,6 +29,7 @@ class Environment:
         self.seq_counter = 0
         self.state = torch.cat((torch.LongTensor([0, 0]), self.next_token()))
         self.action_seq = []
+        self.split_action_seq = []
         self.num_surface = 0
 
     def next_token(self):
@@ -58,16 +60,40 @@ class Environment:
     def update_state(self, action, new_token):
         return torch.cat((torch.LongTensor([self.num_surface, action]), new_token))
 
+    def find_surfaces(self, qarow, split_action_seq):
+        last_tag = 0
+        surfaces = [[], []]
+        surface = []
+        splitted_relations = []
+        for idx, tag in enumerate(self.action_seq):
+            if tag != 0:
+                if last_tag != tag or (last_tag == tag and split_action_seq[idx] == 0):
+                    if len(surface) > 0:
+                        surfaces[last_tag - 1].append(surface)
+                        if last_tag == tag and split_action_seq[idx] == 0:
+                            splitted_relations.append(idx)
+                    surface = []
+                surface.append(qarow.normalized_question_with_numbers[idx])
+            elif tag == 0:
+                if len(surface) > 0:
+                    surfaces[last_tag - 1].append(surface)
+                    surface = []
+            last_tag = tag
+        if len(surface) > 0:
+            surfaces[last_tag - 1].append(surface)
+        return surfaces, splitted_relations
+
     @profile
-    def step(self, action, action_probs, qarow, k, train):
-        detailed_rewards = []
-        step_reward = 0
-        relation_mrr, entity_mrr = 0, 0
+    def step(self, action, action_probs, split_action, qarow, k, train):
+        detailed_rewards, split_action_target = [], []
+        step_reward, relation_mrr, entity_mrr = 0, 0, 0
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
         self.state = self.update_state(action, self.next_token())
         self.action_seq.append(action)
+        self.split_action_seq.append(split_action)
+
         is_done = self.is_done()
         if is_done:
             self.logger.debug(qarow.question)
@@ -84,42 +110,32 @@ class Environment:
                 if train and self.cache.has(cache_key):
                     step_reward, mrr = self.cache.get(cache_key)
                 else:
-                    last_tag = 0
-                    surfaces = [[], []]
-                    surface = []
-                    for idx, tag in enumerate(self.action_seq):
-                        if tag != 0:
-                            if last_tag != tag:
-                                if len(surface) > 0:
-                                    surfaces[last_tag - 1].append(surface)
-                                surface = []
-                            # word_id = self.input_seq[idx]
-                            # if word_id == 1:
-                            #     word_id = qarow.normalized_question_with_numbers[idx]
-                            surface.append(qarow.normalized_question_with_numbers[idx])
-                        elif tag == 0:
-                            if len(surface) > 0:
-                                if len(surface) > 0:
-                                    surfaces[last_tag - 1].append(surface)
-                                surface = []
-                        last_tag = tag
-                    if len(surface) > 0:
-                        surfaces[last_tag - 1].append(surface)
+                    surfaces, splitted_relations = self.find_surfaces(qarow, self.split_action_seq)
 
-                    relation_results, relation_score, relation_mrr = self.relation_linker.best_ranks(list(surfaces[0]),
-                                                                                                     qarow, k, train)
-                    # if relation_score < 0.6:
-                    #     relation_score = self.negative_reward
-                    entity_results, entity_score, entity_mrr = self.entity_linker.best_ranks(list(surfaces[1]), qarow,
-                                                                                             k, train)
-                    # if entity_score < 0.6:
-                    #     entity_score = self.negative_reward
-                    step_reward = (relation_score + entity_score) / 2
+                    relation_results, relation_score, relation_mrr = self.relation_linker.best_ranks(
+                        list(surfaces[0]), qarow, k, train)
+
+                    split_action_target = list(self.split_action_seq)
+
+                    if train:
+                        for item in splitted_relations:
+                            split_action_seq = list(self.split_action_seq)
+                            split_action_seq[item] = 1
+                            surfaces_1, splitted_relations_1 = self.find_surfaces(qarow, split_action_seq)
+                            relation_results_1, relation_score_1, relation_mrr_1 = self.relation_linker.best_ranks(
+                                list(surfaces_1[0]), qarow, k, train)
+                            if relation_score_1 > relation_score:
+                                split_action_target[item] = 1
+                            else:
+                                split_action_target[item] = 0
+
+                    entity_results, entity_score, entity_mrr = self.entity_linker.best_ranks(
+                        list(surfaces[1]), qarow, k, train)
 
                     relation_results = [[item - 0.5 if item < 0.5 else item for item in items] for items in
                                         relation_results]
                     entity_results = [[item - 0.5 for item in items] for items in entity_results]
-
+                    step_reward = (relation_score + entity_score) / 2
                     step_reward -= 0.5
 
                     rel_idx, rel_cntr, ent_idx, ent_cntr = 0, 0, 0, 0
@@ -147,4 +163,4 @@ class Environment:
                 self.logger.debug(list(map('{:0.2f}'.format, [entity_mrr, relation_mrr])))
                 self.logger.debug('')
                 # detailed_rewards = [0 for r in detailed_rewards]
-        return self.state, detailed_rewards, step_reward, is_done, relation_mrr, entity_mrr
+        return self.state, detailed_rewards, step_reward, split_action_target, is_done, relation_mrr, entity_mrr

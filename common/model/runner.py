@@ -10,6 +10,7 @@ import os
 from config import config
 from common.model.agent import Agent
 from common.model.policy import Policy
+from common.model.policySplit import PolicySplit
 from common.model.environment import Environment
 from common.linkers.relationOrderLinker import RelationOrderedLinker
 from common.linkers.entityOrderedLinker import EntityOrderedLinker
@@ -50,11 +51,21 @@ class Runner:
                                 output_size=3,
                                 dropout_ratio=args.dropout)
         policy_network.emb.weight.data.copy_(self.word_vectorizer.emb)
+        split_network = PolicySplit(vocab_size=lc_quad.vocab.size(),
+                                    emb_size=self.word_vectorizer.word_size,
+                                    input_size=(self.word_vectorizer.word_size + 1) * 3 + 1 + 1,
+                                    hidden_size=self.word_vectorizer.word_size,
+                                    output_size=1,
+                                    dropout_ratio=args.dropout)
+        split_network.emb.weight.data.copy_(self.word_vectorizer.emb)
         self.agent = Agent(number_of_relations=2,
                            gamma=args.gamma,
                            policy_network=policy_network,
+                           split_network=split_network,
                            policy_optimizer=torch.optim.Adam(
-                               filter(lambda p: p.requires_grad, policy_network.parameters()), lr=args.lr))
+                               filter(lambda p: p.requires_grad, policy_network.parameters()), lr=args.lr),
+                           split_optimizer=torch.optim.Adam(
+                               filter(lambda p: p.requires_grad, split_network.parameters()), lr=args.lr))
 
         self.environment = Environment(entity_linker=entity_linker,
                                        relation_linker=relation_linker,
@@ -100,8 +111,13 @@ class Runner:
                     self.agent.policy_optimizer.step()
                     self.agent.policy_network.zero_grad()
 
+                    self.agent.split_optimizer.step()
+                    self.agent.split_network.zero_grad()
+
             self.agent.policy_optimizer.step()
             self.agent.policy_network.zero_grad()
+            self.agent.split_optimizer.step()
+            self.agent.split_network.zero_grad()
 
             if epoch > 0 and epoch % 10 == 0:
                 e = max(e - 0.001, 0.1)
@@ -138,9 +154,9 @@ class Runner:
         for idx, qarow in enumerate(lc_quad.train_set):
             reward, relation_mrr, entity_mrr, loss, _ = self.step(
                 lc_quad.coded_train_corpus[idx],
-        # for idx, qarow in enumerate(lc_quad.test_set):
-        #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
-        #         lc_quad.coded_test_corpus[idx],
+                # for idx, qarow in enumerate(lc_quad.test_set):
+                #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
+                #         lc_quad.coded_test_corpus[idx],
                 qarow.lower_indicator, qarow,
                 e=args.e,
                 train=False,
@@ -156,24 +172,27 @@ class Runner:
 
     @profile
     def step(self, input, lower_indicator, qarow, e, train=True, k=0):
-        rewards, action_log_probs, action_probs, actions = [], [], [], []
+        rewards, action_log_probs, action_probs, actions, split_actions = [], [], [], [], []
         loss = 0
         running_reward = 0
         self.environment.init(input, lower_indicator)
+        self.agent.init()
         state = self.environment.state
         while True:
-            action, action_log_prob, action_prob = self.agent.select_action(state, e, train)
+            action, action_log_prob, action_prob, split_action = self.agent.select_action(state, e, train)
+            split_actions.append(split_action)
             actions.append(int(action))
             action_log_probs.append(action_log_prob)
             action_probs.append(action_prob)
-            new_state, detailed_rewards, total_reward, done, relation_mrr, entity_mrr = \
-                self.environment.step(action, action_probs, qarow, k, train=train)
+            new_state, detailed_rewards, total_reward, split_action_target, done, relation_mrr, entity_mrr = \
+                self.environment.step(action, action_probs, int(split_action >= 0.5), qarow, k, train=train)
             running_reward += total_reward
             # rewards.append(total_reward)
             state = new_state
             if done:
                 if train:
-                    loss = self.agent.backward(detailed_rewards, total_reward, action_log_probs)
+                    loss, split_loss = self.agent.backward(detailed_rewards, total_reward, action_log_probs,
+                                                           split_actions, split_action_target)
                 break
             running_reward = min(running_reward, 1)
         del action_log_prob
