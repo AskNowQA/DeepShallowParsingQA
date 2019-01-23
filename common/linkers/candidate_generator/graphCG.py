@@ -1,3 +1,4 @@
+import torch
 import pickle as pk
 import ujson as json
 from common.utils import *
@@ -27,4 +28,15 @@ class GraphCG:
             hop_1 = set([item[1] for item in hop_1])
             hop_2 = set([item[3] for item in hop_2])
             results = [self.id2rel[id] for id in hop_1 | hop_2]
+            qa_row = [item for item in self.dataset.train_set if item.question == question]
+            if len(qa_row) > 0:
+                qa_row = qa_row[0]
+                target_uri_not_in_results = [uri.raw_uri for uri in qa_row.sparql.relations if
+                                             uri.raw_uri not in [item[0] for item in results]]
+
+                if len(target_uri_not_in_results) > 0:
+                    for item in target_uri_not_in_results:
+                        results.append(
+                            [item, item[item.rindex('/') + 1:], [], [], [], torch.zeros([3], dtype=torch.int64), 1])
+
             return results
