@@ -33,7 +33,7 @@ class Runner:
         # string_similarity_metric = jellyfish.levenshtein_distance
         entity_linker = EntityOrderedLinker(
             candidate_generator=DatasetCG(lc_quad, entity=True),
-            sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, return_similarity=True)],
+            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True)],
             vocab=lc_quad.vocab)
 
         relation_linker = RelationOrderedLinker(
@@ -143,20 +143,20 @@ class Runner:
             vocab=lc_quad.vocab)
 
         self.environment.relation_linker = RelationOrderedLinker(
-            candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
-                                        core_chains_path=config['lc_quad']['core_chains'],
-                                        dataset=lc_quad),
-            # candidate_generator=ElasticLinker(self.elastic, index_name='relation_whole_match_index'),
+            # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
+            #                             core_chains_path=config['lc_quad']['core_chains'],
+            #                             dataset=lc_quad),
+            candidate_generator=ElasticLinker(self.elastic, index_name='relation_whole_match_index'),
             sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True),
                      ],  # EmbeddingSimilaritySorter(self.word_vectorizer)],
             vocab=lc_quad.vocab)
         total_relation_mrr, total_entity_mrr = [], []
-        for idx, qarow in enumerate(lc_quad.train_set):
+        # for idx, qarow in enumerate(lc_quad.train_set):
+        #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
+        #         lc_quad.coded_train_corpus[idx],
+        for idx, qarow in enumerate(lc_quad.test_set):
             reward, relation_mrr, entity_mrr, loss, _ = self.step(
-                lc_quad.coded_train_corpus[idx],
-                # for idx, qarow in enumerate(lc_quad.test_set):
-                #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
-                #         lc_quad.coded_test_corpus[idx],
+                lc_quad.coded_test_corpus[idx],
                 qarow.lower_indicator, qarow,
                 e=args.e,
                 train=False,
