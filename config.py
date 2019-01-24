@@ -2,6 +2,13 @@ import os
 
 config = {
     'base_path': '/Users/hamid/workspace/DeepShallowParsingQA',
+    'http': {
+        'timeout': 120
+    },
+    'dbpedia_kb': {
+        # 'endpoint': 'http://dbpedia.org/sparql'
+        'endpoint': 'http://sda-srv01.iai.uni-bonn.de:8164/sparql'
+    },
     'elastic': {
         'server': '127.0.0.1:9200',
         'entity_ngram_index_config': {
@@ -96,5 +103,6 @@ config['lc_quad'] = {
     'rel2id': os.path.join(config['lc_quad']['base_path'], 'relations.pickle'),
     'core_chains': os.path.join(config['lc_quad']['base_path'], 'id_big_data.json'),
     'vocab': os.path.join(config['lc_quad']['base_path'], 'dataset.vocab'),
-    'emb': os.path.join(config['lc_quad']['base_path'], 'dataset.emb')
+    'emb': os.path.join(config['lc_quad']['base_path'], 'dataset.emb'),
+    'entity_one_hop': os.path.join(config['lc_quad']['base_path'], 'entity_one_hop.pk'),
 }
