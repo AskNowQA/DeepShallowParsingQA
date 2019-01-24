@@ -100,7 +100,11 @@ class Elastic:
                 'query': {'bool': {'must': [{'match': {'label': text}}, {'match': {'dtype': constraint}}]}}
             })
         if results['hits']['total'] > 0:
-            output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
+            if 'relation' in index:
+                output = [[item['_source']['key'], item['_source']['key'][item['_source']['key'].rindex('/') + 1:]] for
+                          item in results['hits']['hits']]
+            else:
+                output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
         else:
             print(results)
         return output
