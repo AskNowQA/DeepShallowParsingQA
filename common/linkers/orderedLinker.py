@@ -52,7 +52,7 @@ class OrderedLinker:
                 number_of_candidates = len(candidates)
                 if target_uri in candidates_dict[candidates_idx]:
                     idx = candidates_dict[candidates_idx][target_uri]
-                    while idx >= 1 and output[candidates_idx][1][idx][1] == output[candidates_idx][1][idx - 1][1]:
+                    while idx >= 1 and output[candidates_idx][1][idx][1].lower() == output[candidates_idx][1][idx - 1][1].lower():
                         idx -= 1
                     score = 1 - idx / number_of_candidates
                     if self.include_similarity_score and isinstance(output[candidates_idx][1][idx][-1], float):
