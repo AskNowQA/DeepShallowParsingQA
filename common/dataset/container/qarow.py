@@ -9,8 +9,7 @@ class QARow:
         self.question = question
         self.sparql = SPARQL(raw_sparql)
         self.normalized_question, self.normalized_question_with_numbers, self.lower_indicator = self.__preprocess(
-            self.question, remove_entity_mention,
-            remove_stop_words)
+            self.question, remove_entity_mention, remove_stop_words)
         self.annotation = annotation
 
     def validate(self):
