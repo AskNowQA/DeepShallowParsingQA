@@ -13,28 +13,32 @@ class OrderedLinker:
         self.history = {}
 
     @profile
-    def link(self, surface, question):
+    def link(self, surface, question, extra_candidates):
         string_surface = ' '.join(surface)
-        unordered_results = self.candidate_generator.generate(string_surface, question)
+        if extra_candidates is not None:
+            unordered_results = extra_candidates
+        else:
+            unordered_results = self.candidate_generator.generate(string_surface, question)
+
         return [[surface, sorter.sort(string_surface, question, unordered_results)] for sorter in self.sorters]
 
-    def link_all(self, surfaces, question):
+    def link_all(self, surfaces, question, extra_candidates):
         output = []
         for surface in surfaces:
-            output.append(self.link(surface, question))
+            output.append(self.link(surface, question, extra_candidates))
         return output
 
     @profile
-    def best_ranks(self, surfaces, target_uris, question, k, train):
+    def best_ranks(self, surfaces, target_uris, question, k, train, extra_candidates=None):
         mrr = 0
         # if train:
         #     if (len(surfaces) != len(target_uris)) or any(
         #             [self.vocab.special[0] in item for item in surfaces]):
         #         return -1, mrr
-        output = self.link_all(surfaces, question)
+        output = self.link_all(surfaces, question, extra_candidates)
         output = [item for tmp in output for item in tmp]
         if len(output) == 0:
-            return [0] * len(surfaces), -1, mrr
+            return [0] * len(surfaces), -1, mrr, []
         candidates_dict = [
             {candidate[0]: idx for idx, candidate in
              zip(range(len(candidates[1]) - 1, -1, -1), reversed(candidates[1]))}
@@ -52,7 +56,8 @@ class OrderedLinker:
                 number_of_candidates = len(candidates)
                 if target_uri in candidates_dict[candidates_idx]:
                     idx = candidates_dict[candidates_idx][target_uri]
-                    while idx >= 1 and output[candidates_idx][1][idx][1].lower() == output[candidates_idx][1][idx - 1][1].lower():
+                    while idx >= 1 and output[candidates_idx][1][idx][1].lower() == output[candidates_idx][1][idx - 1][
+                        1].lower():
                         idx -= 1
                     score = 1 - idx / number_of_candidates
                     if self.include_similarity_score and isinstance(output[candidates_idx][1][idx][-1], float):
@@ -74,7 +79,7 @@ class OrderedLinker:
             self.history[question] = {}
         question_history = self.history[question]
 
-        used_uris, used_candidates, used_surfaces, rank = [], [], [], []
+        used_uris, used_candidates, used_surfaces, rank, found_uris = [], [], [], [], []
         scores = [[0] * len(surface) for surface in surfaces]
         for item in output2:
             surface_idx = surfaces.index(item[4])
@@ -101,9 +106,10 @@ class OrderedLinker:
                         rank.append(item[3])
                 elif item[3] <= k:
                     rank.append(item[3])
+                    found_uris.append(item[0])
         max_len = max(len(target_uris), len(surfaces))
         if k >= 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
         mean_score = sum(map(sum, scores)) / sum(map(len, scores))
 
-        return scores, mean_score / max_len, mrr
+        return scores, mean_score / max_len, mrr, found_uris

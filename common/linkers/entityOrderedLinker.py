@@ -29,6 +29,6 @@ class EntityOrderedLinker(OrderedLinker):
 
         self.logger.debug([' '.join(item) for item in surfaces])
         self.logger.debug([rel.raw_uri for rel in qa_row.sparql.entities])
-        self.logger.debug(list(map('{:0.2f}'.format, results[1:])))
+        self.logger.debug(list(map('{:0.2f}'.format, results[1:-1])))
 
         return results
