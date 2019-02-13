@@ -7,7 +7,7 @@ config = {
     },
     'dbpedia_kb': {
         # 'endpoint': 'http://dbpedia.org/sparql'
-        'endpoint': 'http://sda-srv01.iai.uni-bonn.de:8164/sparql'
+        'endpoint': 'http://sda01dbpedia:softrock@131.220.9.219/sparql'
     },
     'elastic': {
         'server': '127.0.0.1:9200',
