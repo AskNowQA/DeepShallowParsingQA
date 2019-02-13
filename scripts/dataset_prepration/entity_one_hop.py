@@ -15,6 +15,7 @@ for qa_row in tqdm(lc_quad.test_set):
         if entity.raw_uri not in one_hop:
             relations = []
             relations = kb.one_hop_relations(entity.raw_uri)
+            relations = [[item, item[item.rindex('/') + 1:]] for item in relations]
             if relations is not None:
                 one_hop[entity.raw_uri] = relations
     with open(file_name, 'wb') as f:
