@@ -5,20 +5,14 @@ from config import config
 
 
 class Environment:
-    def __init__(self, entity_linker, relation_linker, positive_reward=1, negative_reward=-0.5):
+    def __init__(self, entity_linker, relation_linker, positive_reward=1, negative_reward=-0.5, dataset=None):
         self.positive_reward = positive_reward
         self.negative_reward = negative_reward
         self.entity_linker = entity_linker
         self.relation_linker = relation_linker
-        self.state = []
-        self.target = []
-        self.lower_indicator = []
-        self.input_seq = []
-        self.input_seq_size = 0
-        self.seq_counter = 0
-        self.action_seq = []
-        self.split_action_seq = []
-        self.num_surface = 0
+        self.dataset = dataset
+        self.state, self.target, self.lower_indicator, self.input_seq, self.action_seq, self.split_action_seq = [], [], [], [], [], []
+        self.input_seq_size, self.seq_counter, self.num_surface = 0, 0, 0
         self.logger = logging.getLogger('main')
         self.cache = Cache(config['env_cache_path'])
 
@@ -66,6 +60,7 @@ class Environment:
         surface = []
         splitted_relations = []
         for idx, tag in enumerate(self.action_seq):
+            tag = int(tag)
             if tag != 0:
                 if last_tag != tag or (last_tag == tag and split_action_seq[idx] == 0):
                     if len(surface) > 0:
@@ -112,8 +107,20 @@ class Environment:
                 else:
                     surfaces, splitted_relations = self.find_surfaces(qarow, self.split_action_seq)
 
-                    relation_results, relation_score, relation_mrr = self.relation_linker.best_ranks(
-                        list(surfaces[0]), qarow, k, train)
+                    entity_linking_done = False
+                    extra_candidates = []
+                    entity_results, entity_score, entity_mrr = [], 0, 0
+                    if not train:
+                        entity_results, entity_score, entity_mrr, found_target_entities = self.entity_linker.best_ranks(
+                            list(surfaces[1]), qarow, k, train)
+                        if self.dataset.one_hop is not None:
+                            for entity in found_target_entities:
+                                if entity in self.dataset.one_hop:
+                                    extra_candidates.extend(self.dataset.one_hop[entity])
+                                    entity_linking_done = True
+                    # extra_candidates = None
+                    relation_results, relation_score, relation_mrr, _ = self.relation_linker.best_ranks(
+                        list(surfaces[0]), qarow, k, train, extra_candidates)
 
                     split_action_target = list(self.split_action_seq)
 
@@ -122,15 +129,15 @@ class Environment:
                             split_action_seq = list(self.split_action_seq)
                             split_action_seq[item] = 1
                             surfaces_1, splitted_relations_1 = self.find_surfaces(qarow, split_action_seq)
-                            relation_results_1, relation_score_1, relation_mrr_1 = self.relation_linker.best_ranks(
+                            relation_results_1, relation_score_1, relation_mrr_1, _ = self.relation_linker.best_ranks(
                                 list(surfaces_1[0]), qarow, k, train)
                             if relation_score_1 > relation_score:
                                 split_action_target[item] = 1
                             else:
                                 split_action_target[item] = 0
-
-                    entity_results, entity_score, entity_mrr = self.entity_linker.best_ranks(
-                        list(surfaces[1]), qarow, k, train)
+                    if not entity_linking_done:
+                        entity_results, entity_score, entity_mrr, _ = self.entity_linker.best_ranks(
+                            list(surfaces[1]), qarow, k, train)
 
                     relation_results = [[item - 0.5 if item < 0.5 else item for item in items] for items in
                                         relation_results]
