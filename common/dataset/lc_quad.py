@@ -26,6 +26,11 @@ class LC_QuAD:
         self.coded_test_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.test_corpus]
         self.vocab_path = vocab_path
 
+        self.one_hop = None
+        if os.path.isfile(config['lc_quad']['entity_one_hop']):
+            with open(config['lc_quad']['entity_one_hop'], 'rb') as f:
+                self.one_hop = pk.load(f)
+
     def __load_dataset(self, dataset_path, remove_entity_mention, remove_stop_words):
         if not os.path.isfile(dataset_path):
             return [], []
@@ -38,12 +43,12 @@ class LC_QuAD:
                              remove_entity_mention, remove_stop_words)
                        for item in
                        raw_dataset]
-            with open('/Users/hamid/workspace/DeepShallowParsingQA/data/lcquad/no_constraints.json', 'r') as f:
-                no_contraints = json.load(f)
-                dataset = [row for row in dataset if row.question in no_contraints]
+            # with open('/Users/hamid/workspace/DeepShallowParsingQA/data/lcquad/no_constraints.json', 'r') as f:
+            #     no_contraints = json.load(f)
+            #     dataset = [row for row in dataset if row.question in no_contraints]
             # dataset = [row for row in dataset if  (len(row.sparql.relations) == 1 and len(row.sparql.entities) == 1)]
             # dataset = [row for row in dataset if len(row.normalized_question) == 3]
-            dataset = dataset[0:100]
+            # dataset = dataset[:10]
             corpus = [item.normalized_question for item in dataset]
             return dataset, corpus
 
