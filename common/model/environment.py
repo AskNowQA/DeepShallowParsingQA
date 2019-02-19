@@ -107,23 +107,17 @@ class Environment:
                 else:
                     surfaces, splitted_relations = self.find_surfaces(qarow, self.split_action_seq)
 
-                    entity_linking_done = False
                     extra_candidates = []
-                    entity_results, entity_score, entity_mrr = [], 0, 0
+                    entity_results, entity_score, entity_mrr, found_target_entities = self.entity_linker.best_ranks(
+                        list(surfaces[1]), qarow, k, train)
+
                     if not train:
-                        entity_results, entity_score, entity_mrr, found_target_entities = self.entity_linker.best_ranks(
-                            list(surfaces[1]), qarow, k, train)
-                        if self.dataset.one_hop is not None:
-                            for entity in found_target_entities:
-                                if entity in self.dataset.one_hop:
-                                    extra_candidates.extend(self.dataset.one_hop[entity])
-                                    entity_linking_done = True
-                    # extra_candidates = None
+                        extra_candidates.extend(self.dataset.find_one_hop_relations(found_target_entities))
+
                     relation_results, relation_score, relation_mrr, _ = self.relation_linker.best_ranks(
                         list(surfaces[0]), qarow, k, train, extra_candidates)
 
                     split_action_target = list(self.split_action_seq)
-
                     if train:
                         for item in splitted_relations:
                             split_action_seq = list(self.split_action_seq)
@@ -135,21 +129,17 @@ class Environment:
                                 split_action_target[item] = 1
                             else:
                                 split_action_target[item] = 0
-                    if not entity_linking_done:
-                        entity_results, entity_score, entity_mrr, _ = self.entity_linker.best_ranks(
-                            list(surfaces[1]), qarow, k, train)
 
                     relation_results = [[item - 0.5 if item < 0.5 else item for item in items] for items in
                                         relation_results]
-                    entity_results = [[item - 0.5 for item in items] for items in entity_results]
+                    entity_results = [[item - 0.5 if item < 0.5 else item for item in items] for items in entity_results]
                     step_reward = (relation_score + entity_score) / 2
                     step_reward -= 0.5
 
                     rel_idx, rel_cntr, ent_idx, ent_cntr = 0, 0, 0, 0
-
                     for idx, item in enumerate(self.input_seq):
                         if self.action_seq[idx] == 0:
-                            detailed_rewards.append(0)
+                            detailed_rewards.append(-0.01) # -0.01
                             pass
                         elif self.action_seq[idx] == 1:
                             detailed_rewards.append(relation_results[rel_idx][rel_cntr])
