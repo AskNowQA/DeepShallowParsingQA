@@ -3,8 +3,9 @@ from common.utils import *
 
 
 class StringSimilaritySorter:
-    def __init__(self, metric, return_similarity=False):
+    def __init__(self, metric, metric_range_percentage=False, return_similarity=False):
         self.metric = metric
+        self.metric_range_percentage = metric_range_percentage
         self.return_similarity = return_similarity
 
     @profile
@@ -20,8 +21,7 @@ class StringSimilaritySorter:
         filtered_candidates = np.array(candidates, dtype=object)
         idxs = np.argsort(candidates_distance)
         if self.return_similarity:
-            max_distance = np.max(candidates_distance)
-            if max_distance <= 1:
+            if self.metric_range_percentage:
                 candidates_similarity = 1 - candidates_distance
             else:
                 surface_len = len(surface)
