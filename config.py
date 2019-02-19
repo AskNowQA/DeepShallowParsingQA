@@ -106,3 +106,12 @@ config['lc_quad'] = {
     'emb': os.path.join(config['lc_quad']['base_path'], 'dataset.emb'),
     'entity_one_hop': os.path.join(config['lc_quad']['base_path'], 'entity_one_hop.pk'),
 }
+
+config['qald_7_ml'] = {'base_path': os.path.join(config['data_path'], 'QALD')}
+config['qald_7_ml'] = {
+    'train': os.path.join(config['qald_7_ml']['base_path'], 'qald-7-train-multilingual.json'),
+    'test': os.path.join(config['qald_7_ml']['base_path'], 'qald-7-test-multilingual.json'),
+    'vocab': os.path.join(config['qald_7_ml']['base_path'], 'dataset.vocab'),
+    'emb': os.path.join(config['qald_7_ml']['base_path'], 'dataset.emb'),
+    'entity_one_hop': os.path.join(config['qald_7_ml']['base_path'], 'entity_one_hop.pk'),
+}
