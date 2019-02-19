@@ -10,7 +10,8 @@ class DatasetCG:
             self.idx = 1
         self.dataset = {item.question: [
             [[entity.raw_uri, entity.label] for entity in item.sparql.entities],
-            [[relation.raw_uri, relation.label] for relation in item.sparql.relations]] for item in
+            [[relation.raw_uri, relation.label, relation.coded[0], relation.coded[1]] for relation in
+             item.sparql.relations]] for item in
             dataset.train_set + dataset.test_set}
 
     @profile
