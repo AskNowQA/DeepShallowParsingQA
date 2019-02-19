@@ -24,34 +24,36 @@ from common.utils import *
 
 
 class Runner:
-    def __init__(self, lc_quad, args):
+    def __init__(self, dataset, args):
         self.logger = logging.getLogger('main')
-        self.word_vectorizer = lc_quad.word_vectorizer
+        self.word_vectorizer = dataset.word_vectorizer
         self.elastic = Elastic(config['elastic']['server'])
         # string_similarity_metric = similarity.ngram.NGram(2).distance
         # string_similarity_metric = similarity.levenshtein.Levenshtein().distance
         # string_similarity_metric = jellyfish.levenshtein_distance
         entity_linker = EntityOrderedLinker(
-            candidate_generator=DatasetCG(lc_quad, entity=True),
-            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True)],
-            vocab=lc_quad.vocab)
+            candidate_generator=DatasetCG(dataset, entity=True),
+            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True)],
+            vocab=dataset.vocab)
 
         relation_linker = RelationOrderedLinker(
-            candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
-                                        core_chains_path=config['lc_quad']['core_chains'],
-                                        dataset=lc_quad),
-            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True),
+            # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
+            #                             core_chains_path=config['lc_quad']['core_chains'],
+            #                             dataset=dataset),
+            candidate_generator=DatasetCG(dataset, relation=True),
+            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
+                     # ],
                      EmbeddingSimilaritySorter(self.word_vectorizer)],
-            vocab=lc_quad.vocab)
+            vocab=dataset.vocab)
 
-        policy_network = Policy(vocab_size=lc_quad.vocab.size(),
+        policy_network = Policy(vocab_size=dataset.vocab.size(),
                                 emb_size=self.word_vectorizer.word_size,
                                 input_size=(self.word_vectorizer.word_size + 1) * 3 + 1 + 1,
                                 hidden_size=self.word_vectorizer.word_size,
                                 output_size=3,
                                 dropout_ratio=args.dropout)
         policy_network.emb.weight.data.copy_(self.word_vectorizer.emb)
-        split_network = PolicySplit(vocab_size=lc_quad.vocab.size(),
+        split_network = PolicySplit(vocab_size=dataset.vocab.size(),
                                     emb_size=self.word_vectorizer.word_size,
                                     input_size=(self.word_vectorizer.word_size + 1) * 3 + 1 + 1,
                                     hidden_size=self.word_vectorizer.word_size,
@@ -70,7 +72,8 @@ class Runner:
         self.environment = Environment(entity_linker=entity_linker,
                                        relation_linker=relation_linker,
                                        positive_reward=args.positive_reward,
-                                       negative_reward=args.negative_reward)
+                                       negative_reward=args.negative_reward,
+                                       dataset=dataset)
 
     def load_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
         if os.path.isfile(checkpoint_filename):
@@ -85,17 +88,17 @@ class Runner:
         torch.save(checkpoint, checkpoint_filename)
 
     @profile
-    def train(self, lc_quad, args, checkpoint_filename=config['checkpoint_path']):
+    def train(self, dataset, args, checkpoint_filename=config['checkpoint_path']):
         total_reward, total_relation_rmm, total_entity_rmm, total_loss = [], [], [], []
         max_rmm, max_rmm_index = 0, -1
         iter = tqdm(range(args.epochs))
-        history = {' '.join(qarow.normalized_question): [] for qarow in lc_quad.train_set}
+        history = {' '.join(qarow.normalized_question): [] for qarow in dataset.train_set}
         self.agent.policy_network.zero_grad()
         e = args.e
         for epoch in iter:
-            for idx, qarow in enumerate(lc_quad.train_set):
+            for idx, qarow in enumerate(dataset.train_set):
                 reward, relation_mrr, entity_mrr, loss, actions = self.step(
-                    lc_quad.coded_train_corpus[idx],
+                    dataset.coded_train_corpus[idx],
                     qarow.lower_indicator,
                     qarow,
                     e=e,
@@ -136,33 +139,36 @@ class Runner:
             print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss), np.mean(total_entity_rmm),
                                               np.mean(total_relation_rmm)])))
 
-    def test(self, lc_quad, args):
+    def test(self, dataset, args):
         self.environment.entity_linker = EntityOrderedLinker(
             candidate_generator=ElasticLinker(self.elastic, index_name='entity_whole_match_index'),
-            sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance)],
-            vocab=lc_quad.vocab)
+            sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
+            vocab=dataset.vocab)
 
         self.environment.relation_linker = RelationOrderedLinker(
             # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
             #                             core_chains_path=config['lc_quad']['core_chains'],
-            #                             dataset=lc_quad),
+            #                             dataset=dataset),
             candidate_generator=ElasticLinker(self.elastic, index_name='relation_whole_match_index'),
-            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, return_similarity=True),
+            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
+                     StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True),
                      ],  # EmbeddingSimilaritySorter(self.word_vectorizer)],
-            vocab=lc_quad.vocab)
+            vocab=dataset.vocab)
         total_relation_mrr, total_entity_mrr = [], []
-        # for idx, qarow in enumerate(lc_quad.train_set):
+        # for idx, qarow in enumerate(dataset.train_set):
         #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
-        #         lc_quad.coded_train_corpus[idx],
-        for idx, qarow in enumerate(lc_quad.test_set):
+        #         dataset.coded_train_corpus[idx],
+        for idx, qarow in enumerate(dataset.test_set):
             reward, relation_mrr, entity_mrr, loss, _ = self.step(
-                lc_quad.coded_test_corpus[idx],
+                dataset.coded_test_corpus[idx],
                 qarow.lower_indicator, qarow,
                 e=args.e,
                 train=False,
                 k=args.k)
-            total_relation_mrr.append(relation_mrr)
-            total_entity_mrr.append(entity_mrr)
+            if len(qarow.sparql.relations) > 0:
+                total_relation_mrr.append(relation_mrr)
+            if len(qarow.sparql.entities) > 0:
+                total_entity_mrr.append(entity_mrr)
 
         total_entity_mrr = np.mean(total_entity_mrr)
         total_relation_mrr = np.mean(total_relation_mrr)
