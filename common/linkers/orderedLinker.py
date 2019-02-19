@@ -15,7 +15,7 @@ class OrderedLinker:
     @profile
     def link(self, surface, question, extra_candidates):
         string_surface = ' '.join(surface)
-        if extra_candidates is not None:
+        if extra_candidates is not None and len(extra_candidates) > 0:
             unordered_results = extra_candidates
         else:
             unordered_results = self.candidate_generator.generate(string_surface, question)
