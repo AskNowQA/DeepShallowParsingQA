@@ -13,29 +13,32 @@ class OrderedLinker:
         self.history = {}
 
     @profile
-    def link(self, surface, question, extra_candidates):
+    def link(self, surfaces, extra_surfaces, surface, question, extra_candidates):
         string_surface = ' '.join(surface)
-        if extra_candidates is not None and len(extra_candidates) > 0:
+        if False and extra_candidates is not None and len(extra_candidates) > 0:
             unordered_results = extra_candidates
         else:
-            unordered_results = self.candidate_generator.generate(string_surface, question)
+            unordered_results = self.candidate_generator.generate(surfaces, extra_surfaces, string_surface, question)
 
-        return [[surface, sorter.sort(string_surface, question, unordered_results)] for sorter in self.sorters]
+        if len(self.sorters) > 0:
+            return [[surface, sorter.sort(string_surface, question, unordered_results)] for sorter in self.sorters]
+        else:
+            return [[surface, unordered_results]]
 
-    def link_all(self, surfaces, question, extra_candidates):
+    def link_all(self, surfaces, extra_surfaces, question, extra_candidates):
         output = []
         for surface in surfaces:
-            output.append(self.link(surface, question, extra_candidates))
+            output.append(self.link(surfaces, extra_surfaces, surface, question, extra_candidates))
         return output
 
     @profile
-    def best_ranks(self, surfaces, target_uris, question, k, train, extra_candidates=None):
+    def best_ranks(self, surfaces, extra_surfaces, target_uris, question, k, train, extra_candidates=None):
         mrr = 0
         # if train:
         #     if (len(surfaces) != len(target_uris)) or any(
         #             [self.vocab.special[0] in item for item in surfaces]):
         #         return -1, mrr
-        output = self.link_all(surfaces, question, extra_candidates)
+        output = self.link_all(surfaces, extra_surfaces, question, extra_candidates)
         output = [item for tmp in output for item in tmp]
         if len(output) == 0:
             return [0] * len(surfaces), -1, mrr, []

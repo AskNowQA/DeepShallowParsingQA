@@ -109,13 +109,13 @@ class Environment:
 
                     extra_candidates = []
                     entity_results, entity_score, entity_mrr, found_target_entities = self.entity_linker.best_ranks(
-                        list(surfaces[1]), qarow, k, train)
+                        list(surfaces[1]), list(surfaces[0]), qarow, k, train)
 
                     if not train:
                         extra_candidates.extend(self.dataset.find_one_hop_relations(found_target_entities))
 
                     relation_results, relation_score, relation_mrr, _ = self.relation_linker.best_ranks(
-                        list(surfaces[0]), qarow, k, train, extra_candidates)
+                        list(surfaces[0]), list(surfaces[1]), qarow, k, train, extra_candidates)
 
                     split_action_target = list(self.split_action_seq)
                     if train:
@@ -124,7 +124,7 @@ class Environment:
                             split_action_seq[item] = 1
                             surfaces_1, splitted_relations_1 = self.find_surfaces(qarow, split_action_seq)
                             relation_results_1, relation_score_1, relation_mrr_1, _ = self.relation_linker.best_ranks(
-                                list(surfaces_1[0]), qarow, k, train)
+                                list(surfaces_1[0]), [], qarow, k, train)
                             if relation_score_1 > relation_score:
                                 split_action_target[item] = 1
                             else:
@@ -132,14 +132,15 @@ class Environment:
 
                     relation_results = [[item - 0.5 if item < 0.5 else item for item in items] for items in
                                         relation_results]
-                    entity_results = [[item - 0.5 if item < 0.5 else item for item in items] for items in entity_results]
+                    entity_results = [[item - 0.5 if item < 0.5 else item for item in items] for items in
+                                      entity_results]
                     step_reward = (relation_score + entity_score) / 2
                     step_reward -= 0.5
 
                     rel_idx, rel_cntr, ent_idx, ent_cntr = 0, 0, 0, 0
                     for idx, item in enumerate(self.input_seq):
                         if self.action_seq[idx] == 0:
-                            detailed_rewards.append(-0.01) # -0.01
+                            detailed_rewards.append(0.1)  # -0.01 general # 0.1 only embedding lc_quad
                             pass
                         elif self.action_seq[idx] == 1:
                             detailed_rewards.append(relation_results[rel_idx][rel_cntr])

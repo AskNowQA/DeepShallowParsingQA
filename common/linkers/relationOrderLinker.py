@@ -5,8 +5,9 @@ class RelationOrderedLinker(OrderedLinker):
     def __init__(self, candidate_generator, sorters, vocab, include_similarity_score=True):
         super(RelationOrderedLinker, self).__init__(candidate_generator, sorters, vocab, include_similarity_score)
 
-    def best_ranks(self, surfaces, qa_row, k, train, extra_candidates=None):
+    def best_ranks(self, surfaces,extra_surfaces, qa_row, k, train, extra_candidates=None):
         results = super(RelationOrderedLinker, self).best_ranks(surfaces,
+                                                                extra_surfaces,
                                                                 qa_row.sparql.relations,
                                                                 qa_row.question,
                                                                 k,

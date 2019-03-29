@@ -20,7 +20,7 @@ class GraphCG:
         return None
 
     @profile
-    def generate(self, surface, question):
+    def generate(self, surfaces, extra_surfaces, surface, question):
         core_chain = self.__find_core_chain(question)
         if core_chain is not None:
             hop_1 = core_chain['uri']['hop-1-properties']

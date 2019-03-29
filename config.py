@@ -9,6 +9,9 @@ config = {
         # 'endpoint': 'http://dbpedia.org/sparql'
         'endpoint': 'http://sda01dbpedia:softrock@131.220.9.219/sparql'
     },
+    'EARL': {
+        'endpoint': 'http://131.220.9.219/iqa/processQuery'
+    },
     'elastic': {
         'server': '127.0.0.1:9200',
         'entity_ngram_index_config': {
@@ -87,7 +90,7 @@ config['data_path'] = os.path.join(config['base_path'], 'data')
 config['cache_path'] = os.path.join(config['data_path'], 'cache')
 config['env_cache_path'] = os.path.join(config['cache_path'], 'env.cache')
 config['glove_path'] = os.path.join(config['data_path'], 'glove/glove.840B.300d')
-config['checkpoint_path'] = os.path.join(config['base_path'], 'checkpoint.chpt')
+config['EARL']['cache_path'] = os.path.join(config['cache_path'], 'earl.cache')
 
 config['dbpedia'] = {'base_path': os.path.join(config['data_path'], 'dbpedia')}
 config['dbpedia'] = {

@@ -15,7 +15,7 @@ class DatasetCG:
             dataset.train_set + dataset.test_set}
 
     @profile
-    def generate(self, surface, question):
+    def generate(self, surfaces, extra_surfaces, surface, question):
         if len(surface) > 2 and question in self.dataset:
             return self.dataset[question][self.idx]
         return []

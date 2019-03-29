@@ -7,7 +7,7 @@ class EntityOrderedLinker(OrderedLinker):
         super(EntityOrderedLinker, self).__init__(candidate_generator, sorters, vocab, include_similarity_score)
 
     @profile
-    def best_ranks(self, surfaces, qa_row, k, train):
+    def best_ranks(self, surfaces, extra_surfaces, qa_row, k, train):
         # if train:
         #     for idx, surface in enumerate(surfaces):
         #         keep = False
@@ -22,6 +22,7 @@ class EntityOrderedLinker(OrderedLinker):
         #             surfaces[idx] = []
 
         results = super(EntityOrderedLinker, self).best_ranks(surfaces,
+                                                              extra_surfaces,
                                                               qa_row.sparql.entities,
                                                               qa_row.question,
                                                               k,

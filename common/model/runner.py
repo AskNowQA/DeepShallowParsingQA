@@ -17,14 +17,16 @@ from common.linkers.entityOrderedLinker import EntityOrderedLinker
 from common.linkers.sorter.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.sorter.embeddingSimilaritySorter import EmbeddingSimilaritySorter
 from common.linkers.candidate_generator.graphCG import GraphCG
-from common.linkers.candidate_generator.elasticLinker import ElasticLinker
+from common.linkers.candidate_generator.elasticCG import ElasticCG
 from common.linkers.candidate_generator.datasetCG import DatasetCG
+from common.linkers.candidate_generator.earlCG import EARLCG
 from common.linkers.candidate_generator.elastic import Elastic
 from common.utils import *
 
 
 class Runner:
     def __init__(self, dataset, args):
+        self.checkpoint_filename = os.path.join(config['base_path'], args.checkpoint)
         self.logger = logging.getLogger('main')
         self.word_vectorizer = dataset.word_vectorizer
         self.elastic = Elastic(config['elastic']['server'])
@@ -75,7 +77,9 @@ class Runner:
                                        negative_reward=args.negative_reward,
                                        dataset=dataset)
 
-    def load_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
+    def load_checkpoint(self, checkpoint_filename=None):
+        if checkpoint_filename is None:
+            checkpoint_filename = self.checkpoint_filename
         if os.path.isfile(checkpoint_filename):
             if torch.cuda.is_available():
                 checkpoint = torch.load(checkpoint_filename)
@@ -83,12 +87,14 @@ class Runner:
                 checkpoint = torch.load(checkpoint_filename, map_location=lambda storage, loc: storage)
             self.agent.policy_network.load_state_dict(checkpoint['model'])
 
-    def save_checkpoint(self, checkpoint_filename=config['checkpoint_path']):
+    def save_checkpoint(self, checkpoint_filename=None):
+        if checkpoint_filename is None:
+            checkpoint_filename = self.checkpoint_filename
         checkpoint = {'model': self.agent.policy_network.state_dict()}
         torch.save(checkpoint, checkpoint_filename)
 
     @profile
-    def train(self, dataset, args, checkpoint_filename=config['checkpoint_path']):
+    def train(self, dataset, args):
         total_reward, total_relation_rmm, total_entity_rmm, total_loss = [], [], [], []
         max_rmm, max_rmm_index = 0, -1
         iter = tqdm(range(args.epochs))
@@ -127,7 +133,7 @@ class Runner:
                 mean_rmm = [np.mean(total_entity_rmm), np.mean(total_relation_rmm)]
                 print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss)] + mean_rmm)))
                 total_reward, total_relation_rmm, total_entity_rmm, total_loss = [], [], [], []
-                self.save_checkpoint(checkpoint_filename)
+                self.save_checkpoint()
                 if sum(mean_rmm) > max_rmm:
                     max_rmm = sum(mean_rmm)
                     max_rmm_index = epoch
@@ -140,20 +146,29 @@ class Runner:
                                               np.mean(total_relation_rmm)])))
 
     def test(self, dataset, args):
+        earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
+
         self.environment.entity_linker = EntityOrderedLinker(
-            candidate_generator=ElasticLinker(self.elastic, index_name='entity_whole_match_index'),
-            sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
-            vocab=dataset.vocab)
+            candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
 
         self.environment.relation_linker = RelationOrderedLinker(
-            # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
-            #                             core_chains_path=config['lc_quad']['core_chains'],
-            #                             dataset=dataset),
-            candidate_generator=ElasticLinker(self.elastic, index_name='relation_whole_match_index'),
-            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
-                     StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True),
-                     ],  # EmbeddingSimilaritySorter(self.word_vectorizer)],
-            vocab=dataset.vocab)
+            candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
+
+        # self.environment.entity_linker = EntityOrderedLinker(
+        #     candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
+        #     sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
+        #     vocab=dataset.vocab)
+        #
+        # self.environment.relation_linker = RelationOrderedLinker(
+        #     # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
+        #     #                             core_chains_path=config['lc_quad']['core_chains'],
+        #     #                             dataset=dataset),
+        #     candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
+        #     sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
+        #              StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True),
+        #              ],  # EmbeddingSimilaritySorter(self.word_vectorizer)],
+        #     vocab=dataset.vocab)
+
         total_relation_mrr, total_entity_mrr = [], []
         # for idx, qarow in enumerate(dataset.train_set):
         #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
