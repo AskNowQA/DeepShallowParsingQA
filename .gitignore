@@ -1,4 +1,5 @@
 *.lprof
+*.chpt
 data/**
 
 .DS_Store
