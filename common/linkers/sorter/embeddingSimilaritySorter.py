@@ -15,16 +15,16 @@ class EmbeddingSimilaritySorter:
 
     @profile
     def sort(self, surface, question, candidates):
-        if len(candidates) == 0:
+        if len(candidates) == 0:  # or len(candidates[0]) < 3:
             return []
         surface_embeddings = self.word_vectorizer.decode(surface)
         surface_embeddings = torch.mean(surface_embeddings, dim=0).reshape(1, -1)
 
         candidates = np.array(candidates, dtype=object)
-        tmp = candidates[:, 5]
-        lengths = candidates[:, 6]
+        candidates_coded = candidates[:, 2]
+        lengths = candidates[:, 3]
         lens = torch.FloatTensor(lengths.astype(float)).reshape(-1, 1)
-        candidates_coded = torch.stack(tmp.tolist())
+        candidates_coded = torch.stack(candidates_coded.tolist())
 
         if torch.cuda.is_available():
             surface_embeddings = surface_embeddings.cuda()
