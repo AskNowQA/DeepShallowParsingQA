@@ -15,11 +15,11 @@ class OrderedLinker:
     @profile
     def link(self, surfaces, extra_surfaces, surface, question, extra_candidates):
         string_surface = ' '.join(surface)
-        if False and extra_candidates is not None and len(extra_candidates) > 0:
+        unordered_results = []
+        if extra_candidates is not None and len(extra_candidates) > 0:  # False and
             unordered_results = extra_candidates
         else:
             unordered_results = self.candidate_generator.generate(surfaces, extra_surfaces, string_surface, question)
-
         if len(self.sorters) > 0:
             return [[surface, sorter.sort(string_surface, question, unordered_results)] for sorter in self.sorters]
         else:
@@ -67,15 +67,15 @@ class OrderedLinker:
                         score *= output[candidates_idx][1][idx][-1]
                     output2.append([target_uri, candidates_idx, score, idx, surface])
                     found = True
-            if not found and target_uri not in change_target_uris:
-                if '/property/' in target_uri:
-                    new_uri = target_uri.replace('/property/', '/ontology/')
-                    not_found_target_uri.append(new_uri)
-                    change_target_uris.append(new_uri)
-                elif '/ontology/' in target_uri:
-                    new_uri = target_uri.replace('/ontology/', '/property/')
-                    not_found_target_uri.append(new_uri)
-                    change_target_uris.append(new_uri)
+            # if not found and target_uri not in change_target_uris:
+            #     if '/property/' in target_uri:
+            #         new_uri = target_uri.replace('/property/', '/ontology/')
+            #         not_found_target_uri.append(new_uri)
+            #         change_target_uris.append(new_uri)
+            #     elif '/ontology/' in target_uri:
+            #         new_uri = target_uri.replace('/ontology/', '/property/')
+            #         not_found_target_uri.append(new_uri)
+            #         change_target_uris.append(new_uri)
         output2.sort(key=lambda x: x[2], reverse=True)
 
         if question not in self.history:
