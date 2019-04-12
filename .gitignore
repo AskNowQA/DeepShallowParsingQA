@@ -1,5 +1,7 @@
 *.lprof
 *.chpt
+**/*.png
+**/*.cach*
 data/**
 
 .DS_Store
