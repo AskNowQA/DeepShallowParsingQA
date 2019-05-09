@@ -16,5 +16,6 @@ def parse_args():
     parser.add_argument('--remove_stop_words', dest='remove_stop_words', action='store_true')
     parser.add_argument('--dataset', default='lcquad', help='`lcquad` or `qald_7_ml`')
     parser.add_argument('--checkpoint', default='checkpoint.chpt', help='name of checkpoint file')
+    parser.add_argument('--port', default=5000, type=int, help='Port')
     args = parser.parse_args()
     return args
