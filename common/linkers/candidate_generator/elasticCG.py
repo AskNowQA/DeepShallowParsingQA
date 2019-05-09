@@ -8,8 +8,9 @@ class ElasticCG:
         self.elastic = elastic
         self.index_name = index_name
 
-        with open(config['dbpedia']['relations'] + '.coded', 'rb') as file_handler:
-            self.coded_uris = pk.load(file_handler)
+        if 'relation' in self.index_name:
+            with open(config['dbpedia']['relations'] + '.coded', 'rb') as file_handler:
+                self.coded_uris = pk.load(file_handler)
 
     def extract_info(self, uri):
         label = uri[uri.rindex('/') + 1:]
