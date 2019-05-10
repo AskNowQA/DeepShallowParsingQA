@@ -120,7 +120,21 @@ class OrderedLinker:
     @profile
     def ranked_link(self, surfaces, extra_surfaces, question, k, extra_candidates=None):
         output = self.link_all(surfaces, extra_surfaces, question, extra_candidates)
-        output = [item for tmp in output for item in tmp]
+        if len(self.sorters) > 0:
+            output2 = []
+            for surface_candidates in output:
+                combined = {}
+                for item in surface_candidates:
+                    for uri in item[1]:
+                        if uri[0] not in combined:
+                            combined[uri[0]] = [uri[-1]]
+                        else:
+                            combined[uri[0]].append(uri[-1])
+                combined = [[k, min(sum(v) / len(v), 1)] for k, v in combined.items()]
+                output2.append([item[0], sorted(combined, key=lambda x: x[1], reverse=True)])
+            output = output2
+        else:
+            output = [item for tmp in output for item in tmp]
         found_uris = [item[1][0][0] for item in output]
 
         output = [{'surface': [question.lower().index(item[0][0]), len(' '.join(item[0]))],
