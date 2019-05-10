@@ -54,7 +54,7 @@ class Environment:
     def update_state(self, action, new_token):
         return torch.cat((torch.LongTensor([self.num_surface, action]), new_token))
 
-    def find_surfaces(self, qarow, split_action_seq):
+    def find_surfaces(self, normalized_question_with_numbers, split_action_seq):
         last_tag = 0
         surfaces = [[], []]
         surface = []
@@ -68,7 +68,7 @@ class Environment:
                         if last_tag == tag and split_action_seq[idx] == 0:
                             splitted_relations.append(idx)
                     surface = []
-                surface.append(qarow.normalized_question_with_numbers[idx])
+                surface.append(normalized_question_with_numbers[idx])
             elif tag == 0:
                 if len(surface) > 0:
                     surfaces[last_tag - 1].append(surface)
@@ -105,7 +105,8 @@ class Environment:
                 if train and self.cache.has(cache_key):
                     step_reward, mrr = self.cache.get(cache_key)
                 else:
-                    surfaces, splitted_relations = self.find_surfaces(qarow, self.split_action_seq)
+                    surfaces, splitted_relations = self.find_surfaces(qarow.normalized_question_with_numbers,
+                                                                      self.split_action_seq)
 
                     extra_candidates = []
                     entity_results, entity_score, entity_mrr, found_target_entities = self.entity_linker.best_ranks(
@@ -122,7 +123,8 @@ class Environment:
                         for item in splitted_relations:
                             split_action_seq = list(self.split_action_seq)
                             split_action_seq[item] = 1
-                            surfaces_1, splitted_relations_1 = self.find_surfaces(qarow, split_action_seq)
+                            surfaces_1, splitted_relations_1 = self.find_surfaces(
+                                qarow.normalized_question_with_numbers, split_action_seq)
                             relation_results_1, relation_score_1, relation_mrr_1, _ = self.relation_linker.best_ranks(
                                 list(surfaces_1[0]), [], qarow, k, train)
                             if relation_score_1 > relation_score:
@@ -162,3 +164,33 @@ class Environment:
                 self.logger.debug('')
                 # detailed_rewards = [0 for r in detailed_rewards]
         return self.state, detailed_rewards, step_reward, split_action_target, is_done, relation_mrr, entity_mrr
+
+    def link(self, action, split_action, k, question, normalized_question_with_numbers):
+        if action > 0:
+            if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
+                self.num_surface += 1
+        self.state = self.update_state(action, self.next_token())
+        self.action_seq.append(action)
+        self.split_action_seq.append(split_action)
+
+        is_done = self.is_done()
+        result = {}
+        if is_done:
+
+            if len(self.action_seq) == len(self.input_seq):
+                surfaces, splitted_relations = self.find_surfaces(normalized_question_with_numbers,
+                                                                  self.split_action_seq)
+                extra_candidates = []
+                candidate_entities, top_candidate_entities = self.entity_linker.ranked_link(
+                    list(surfaces[1]), list(surfaces[0]), question, k, extra_candidates=None)
+
+                extra_candidates.extend(self.dataset.find_one_hop_relations(top_candidate_entities))
+
+                candidate_relations, _ = self.relation_linker.ranked_link(
+                    list(surfaces[0]), list(surfaces[1]), question, k, extra_candidates)
+
+                result = {'surfaces': {'entities:': surfaces[1], 'relations': surfaces[0]},
+                          'entities': candidate_entities,
+                          'relations': candidate_relations}
+
+        return self.state, is_done, result

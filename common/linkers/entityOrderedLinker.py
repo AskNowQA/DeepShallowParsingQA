@@ -33,3 +33,7 @@ class EntityOrderedLinker(OrderedLinker):
         self.logger.debug(list(map('{:0.2f}'.format, results[1:-1])))
 
         return results
+
+    def ranked_link(self, surfaces, extra_surfaces, question, k, extra_candidates=None):
+        results = super(EntityOrderedLinker, self).ranked_link(surfaces, extra_surfaces, question, k, extra_candidates)
+        return results

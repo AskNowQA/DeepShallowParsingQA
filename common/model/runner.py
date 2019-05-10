@@ -21,11 +21,13 @@ from common.linkers.candidate_generator.elasticCG import ElasticCG
 from common.linkers.candidate_generator.datasetCG import DatasetCG
 from common.linkers.candidate_generator.earlCG import EARLCG
 from common.linkers.candidate_generator.elastic import Elastic
+from common.dataset.container.qarow import QARow
 from common.utils import *
 
 
 class Runner:
     def __init__(self, dataset, args):
+        self.vocab = dataset.vocab
         self.checkpoint_filename = os.path.join(config['base_path'], args.checkpoint)
         self.logger = logging.getLogger('main')
         self.word_vectorizer = dataset.word_vectorizer
@@ -146,7 +148,7 @@ class Runner:
                                               np.mean(total_relation_rmm)])))
 
     def test(self, dataset, args):
-        earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
+        # earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
         #
         # self.environment.entity_linker = EntityOrderedLinker(
         #     candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
@@ -170,7 +172,6 @@ class Runner:
                      ],
             vocab=dataset.vocab)
 
-
         total_relation_mrr, total_entity_mrr = [], []
         # for idx, qarow in enumerate(dataset.train_set):
         #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
@@ -192,6 +193,42 @@ class Runner:
         print('entity MRR', total_entity_mrr)
         print('relation MRR', total_relation_mrr)
         return total_entity_mrr, total_relation_mrr
+
+    def link(self, question, e, k):
+        if self.environment.entity_linker is None:
+            self.environment.entity_linker = EntityOrderedLinker(
+                candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
+                sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True)],
+                vocab=self.vocab)
+        if self.environment.relation_linker is None:
+            self.environment.relation_linker = RelationOrderedLinker(
+                candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
+                sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
+                         EmbeddingSimilaritySorter(self.word_vectorizer)
+                         ],
+                vocab=self.vocab)
+
+        normalized_question, normalized_question_with_numbers, lower_indicator = QARow.preprocess(question, [], False,
+                                                                                                  False)
+        coded_normalized_question = [self.vocab.getIndex(word, 0) for word in normalized_question]
+
+        rewards, action_log_probs, action_probs, actions, split_actions = [], [], [], [], []
+        self.environment.init(coded_normalized_question, lower_indicator)
+        self.agent.init()
+        state = self.environment.state
+        while True:
+            action, action_log_prob, action_prob, split_action = self.agent.select_action(state, e, False)
+            split_actions.append(split_action)
+            actions.append(int(action))
+            action_log_probs.append(action_log_prob)
+            action_probs.append(action_prob)
+            new_state, done, result = self.environment.link(action, int(split_action >= 0.5), k,
+                                                            question,
+                                                            normalized_question_with_numbers)
+            state = new_state
+            if done:
+                break
+        return result
 
     @profile
     def step(self, input, lower_indicator, qarow, e, train=True, k=0):

@@ -116,3 +116,16 @@ class OrderedLinker:
         mean_score = sum(map(sum, scores)) / sum(map(len, scores))
 
         return scores, mean_score / max_len, mrr, found_uris
+
+    @profile
+    def ranked_link(self, surfaces, extra_surfaces, question, k, extra_candidates=None):
+        output = self.link_all(surfaces, extra_surfaces, question, extra_candidates)
+        output = [item for tmp in output for item in tmp]
+        found_uris = [item[1][0][0] for item in output]
+
+        output = [{'surface': [question.lower().index(item[0][0]), len(' '.join(item[0]))],
+                   'uris': [{'confidence': uri[-1], 'uri': uri[0]} for uri in item[1][:k]]}
+                  for item in
+                  output]
+
+        return output, found_uris

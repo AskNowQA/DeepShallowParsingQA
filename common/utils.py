@@ -1,5 +1,6 @@
 import os
-import ujson
+import ujson as json
+import logging.config
 
 try:
     import builtins
@@ -65,6 +66,25 @@ class Utils:
         print(*args, **kwargs)
         Utils.reset_color()
 
+    @staticmethod
+    def setup_logging(
+            default_path='logging.json',
+            default_level=logging.INFO,
+            env_key='LOG_CFG'
+    ):
+        """Setup logging configuration
+        """
+        path = default_path
+        value = os.getenv(env_key, None)
+        if value:
+            path = value
+        if os.path.exists(path):
+            with open(path, 'rt') as f:
+                config = json.load(f)
+            logging.config.dictConfig(config)
+        else:
+            logging.basicConfig(level=default_level)
+
 
 class Cache:
     def __init__(self, file_path):
@@ -72,7 +92,7 @@ class Cache:
         self.file_path = file_path
         if os.path.isfile(file_path):
             with open(self.file_path, 'r') as file_handler:
-                self.dic = ujson.load(file_handler)
+                self.dic = json.load(file_handler)
         self.dirty_counter = 0
 
     def has(self, key):
@@ -90,4 +110,4 @@ class Cache:
 
     def save(self):
         with open(self.file_path, 'w') as file_handler:
-            ujson.dump(self.dic, file_handler)
+            json.dump(self.dic, file_handler)
