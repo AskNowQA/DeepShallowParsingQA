@@ -12,7 +12,6 @@ class Elastic:
         batch_size = 100000
         delete_index = True
 
-        type_name = 'resources'
         bulk_data = []
         counter = 0
         uris = []
@@ -92,14 +91,12 @@ class Elastic:
     def search_index(self, text, index, constraint=None, size=10):
         output = []
         if constraint is None:
-            results = self.es.search(index=index, doc_type='resources', size=size, body={
-                'query': {'match': {'label': text, }}
-            })
+            results = self.es.search(index=index, size=size, body={'query': {'match': {'label': text, }}})
         else:
-            results = self.es.search(index=index, doc_type='resources', size=size, body={
+            results = self.es.search(index=index, size=size, body={
                 'query': {'bool': {'must': [{'match': {'label': text}}, {'match': {'dtype': constraint}}]}}
             })
-        if results['hits']['total'] > 0:
+        if results['hits']['total']['value'] > 0:
             output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
         else:
             print(results)
@@ -107,9 +104,7 @@ class Elastic:
 
     def search_term(self, text, index, size=10):
         output = []
-        results = self.es.search(index=index, doc_type='resources', size=size, body={
-            'query': {'term': {'key': text, }}
-        })
+        results = self.es.search(index=index, size=size, body={'query': {'term': {'key': text, }}})
 
         if results['hits']['total'] > 0:
             output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
