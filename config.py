@@ -71,7 +71,7 @@ config = {
             }}
         },
         'relation_whole_match_index_config': {
-            'mappings': {'resources': {
+            'mappings': {
                 'properties': {
                     'label': {
                         'type': 'text',
@@ -82,7 +82,7 @@ config = {
                         'type': 'keyword'
                     },
                 }
-            }}
+            }
         }
     }
 }

@@ -41,7 +41,7 @@ class Elastic:
                              }
                 if 'edgecount' in json_object:
                     data_dict['edge_count'] = json_object['edgecount']
-                op_dict = {"index": {"_index": index_name, "_type": type_name}}
+                op_dict = {"index": {"_index": index_name}}
                 bulk_data.append(op_dict)
                 bulk_data.append(data_dict)
                 if uri not in uris:
@@ -53,7 +53,7 @@ class Elastic:
                                  }
                     if 'edgecount' in json_object:
                         data_dict['edge_count'] = json_object['edgecount']
-                    op_dict = {"index": {"_index": index_name, "_type": type_name}}
+                    op_dict = {"index": {"_index": index_name}}
                     bulk_data.append(op_dict)
                     bulk_data.append(data_dict)
                     uris.append(uri)
