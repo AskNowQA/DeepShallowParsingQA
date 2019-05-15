@@ -37,7 +37,7 @@ config = {
                     }
                 }
             },
-            'mappings': {'resources': {
+            'mappings': {
                 'properties': {
                     'label': {
                         'type': 'text',
@@ -50,11 +50,11 @@ config = {
                         'type': 'integer'
                     }
                 }
-            }}
+            }
 
         },
         'entity_whole_match_index_config': {
-            'mappings': {'resources': {
+            'mappings': {
                 'properties': {
                     'label': {
                         'type': 'text',
@@ -68,7 +68,7 @@ config = {
                         'type': 'integer'
                     }
                 }
-            }}
+            }
         },
         'relation_whole_match_index_config': {
             'mappings': {
