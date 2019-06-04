@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 
 font = {'family': 'normal',
         # 'weight' : 'bold',
-        'size': 16}
+        'size': 12}
 
 
-# matplotlib.rc('font', **font)
+matplotlib.rc('font', **font)
 
 
 def MRR_plot():
@@ -32,7 +32,7 @@ def MRR_plot():
     ax.plot(range(1, len(earl_entity_mrrs) + 1), earl_entity_mrrs, marker='o', color='black', label='EARL')
     plt.xticks(range(1, len(entity_mrrs) + 1))
     plt.legend(loc='center right')
-    plt.xlabel('k=1..10')
+    plt.xlabel('k')
     plt.ylabel('Mean Reciprocal Rank (MRR)')
     fig.tight_layout()
     plt.savefig('mrr_entity_k.png')
@@ -44,7 +44,7 @@ def MRR_plot():
     ax.plot(range(1, len(relation_mrrs) + 1), relation_mrrs, marker='x', color='blue', label='MDP-Parser')
     ax.plot(range(1, len(earl_relation_mrrs) + 1), earl_relation_mrrs, marker='o', color='black', label='EARL')
     plt.xticks(range(1, len(entity_mrrs) + 1))
-    plt.xlabel('k=1..10')
+    plt.xlabel('k')
     plt.ylabel('Mean Reciprocal Rank (MRR)')
     plt.legend(loc='center right')
     fig.tight_layout()
@@ -57,7 +57,7 @@ def error_analysis_plot():
     ax = fig.add_subplot(111)
     labels = 'Linker Failure', 'Missing/No Relation Span', 'Incomplete Entity Span', 'Others'
     ind = np.arange(len(labels))
-    width = 0.3
+    width = 0.2
     us = [64, 35, 19, 12]
     sum_ = sum(us)
     us = [item / sum_ for item in us]
@@ -72,13 +72,13 @@ def error_analysis_plot():
     ax.barh(ind + width, falcon, width, color='brown', label='Falcon')
 
     for i, v in enumerate(us):
-        ax.text(v - 0.04, -0.05 + i - width, "{:.2f}".format(v), color='white', fontweight='bold')
+        ax.text(v - 0.06, -0.05 + i - width, "{:.2f}".format(v), color='white', fontweight='bold')
 
     for i, v in enumerate(earl):
-        ax.text(v - 0.04, -0.05 + i, "{:.2f}".format(v), color='white', fontweight='bold')
+        ax.text(v - 0.06, -0.05 + i, "{:.2f}".format(v), color='white', fontweight='bold')
 
     for i, v in enumerate(falcon):
-        ax.text(v - 0.04, -0.05 + i + width, "{:.2f}".format(v), color='white', fontweight='bold')
+        ax.text(v - 0.06, -0.05 + i + width, "{:.2f}".format(v), color='white', fontweight='bold')
 
     plt.gca().set_yticks(ind)
     plt.gca().set_yticklabels(labels)
