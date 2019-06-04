@@ -3,7 +3,7 @@
 **/*.png
 **/*.cach*
 data/**
-
+tools/**
 .DS_Store
 .idea/**
 line_profiler/**
