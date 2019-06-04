@@ -1,7 +1,9 @@
 import argparse
 import re
 import torch
+import os
 import pickle as pk
+from tqdm import tqdm
 from config import config
 from common.dataset.lc_quad import LC_QuAD
 from common.dataset.qald_7_ml import Qald_7_ml
@@ -24,21 +26,23 @@ if __name__ == '__main__':
                             False, False)
     kb = DBpedia()
 
-    one_hop = {}
-    # for qa_row in tqdm(dataset.test_set):
-    #     for entity in qa_row.sparql.entities:
-    #         if entity.raw_uri not in one_hop:
-    #             relations = []
-    #             relations = kb.one_hop_relations(entity.raw_uri)
-    #             relations = [[item, item[item.rindex('/') + 1:]] for item in relations]
-    #             if relations is not None:
-    #                 one_hop[entity.raw_uri] = relations
-    #     with open(file_name, 'wb') as f:
-    #         pk.dump(one_hop, f)
+    if os.path.exists(file_name):
+        with open(file_name, 'rb') as f:
+            one_hop = pk.load(f)
+    else:
+        one_hop = {}
+    for qa_row in tqdm(dataset.test_set + dataset.train_set):
+        for entity in qa_row.sparql.entities:
+            if entity.raw_uri not in one_hop:
+                relations = []
+                relations = kb.one_hop_relations(entity.raw_uri)
+                relations = [[item, item[item.rindex('/') + 1:]] for item in relations]
+                if relations is not None:
+                    one_hop[entity.raw_uri] = relations
+    with open(file_name, 'wb') as f:
+        pk.dump(one_hop, f)
 
     vocab = dataset.vocab
-    with open(file_name, 'rb') as f:
-        one_hop = pk.load(f)
     for entity, uris in one_hop.items():
         for idx in range(len(uris)):
             uri, label = uris[idx][:2]
