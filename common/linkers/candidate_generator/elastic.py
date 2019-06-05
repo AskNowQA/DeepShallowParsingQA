@@ -96,7 +96,11 @@ class Elastic:
             results = self.es.search(index=index, size=size, body={
                 'query': {'bool': {'must': [{'match': {'label': text}}, {'match': {'dtype': constraint}}]}}
             })
-        if results['hits']['total']['value'] > 0:
+        if isinstance(results['hits']['total'], int):
+            total_hits = results['hits']['total']
+        else:
+            total_hits = results['hits']['total']['value']
+        if total_hits > 0:
             output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
         else:
             print(results)
