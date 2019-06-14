@@ -141,11 +141,17 @@ class OrderedLinker:
             output = output2
         else:
             output = [item for tmp in output for item in tmp]
-        found_uris = [item[1][0][0] for item in output if len(item[1])>0]
+        found_uris = [item[1][0][0] for item in output if len(item[1]) > 0]
 
-        output = [{'surface': [question.lower().index(item[0][0]), len(' '.join(item[0]))],
-                   'uris': [{'confidence': uri[-1], 'uri': uri[0]} for uri in item[1][:_k]]}
-                  for item in
-                  output]
+        tmp = []
+        for item in output:
+            surface = ' '.join(item[0])
+            if surface in question:
+                pos = question.lower().index(surface)
+            else:
+                pos = question.lower().index(item[0][0])
 
+            tmp.append({'surface': [pos, len(surface)],
+                        'uris': [{'confidence': uri[-1], 'uri': uri[0]} for uri in item[1][:_k]]})
+        output = tmp
         return output, found_uris
