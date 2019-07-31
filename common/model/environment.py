@@ -2,6 +2,7 @@ import torch
 import logging
 from common.utils import *
 from config import config
+from common.dataset.container.uri import URI
 
 
 class Environment:
@@ -165,6 +166,65 @@ class Environment:
                 # detailed_rewards = [0 for r in detailed_rewards]
         return self.state, detailed_rewards, step_reward, split_action_target, is_done, relation_mrr, entity_mrr
 
+    def connecting_relations_offset(self, candidate_entities, question, offset):
+        try:
+            c1 = candidate_entities[0]['uris'][0]['confidence'] - offset
+            c2 = candidate_entities[1]['uris'][0]['confidence'] - offset
+            candidate_relations = []
+            for first_entity in candidate_entities[0]['uris']:
+                if first_entity['confidence'] < c1:
+                    break
+                for second_entity in candidate_entities[1]['uris']:
+                    if second_entity['confidence'] < c2:
+                        break
+                    candidate_relations.append(
+                        Utils.relations_connecting_entities(first_entity['uri'], second_entity['uri'],
+                                                            'q.cache'))
+
+            candidate_relations = [set([t for item in candidate_relations for t in item[0] if len(t) > 0]),
+                                   set([t for item in candidate_relations for t in item[1] if len(t) > 0])]
+            # candidate_relations = Utils.relations_connecting_entities(*top_candidate_entities, 'q.cache')
+            relations_sim, rel_sims = {}, []
+            for rel_id, relations in enumerate(candidate_relations):
+                rel_sims.append({})
+                relations_sim[rel_id] = [0, '']
+                uris = [URI(item) for item in relations]
+                for uri in uris:
+                    uri.coded = self.dataset.decode(uri)
+                uris = [[item.raw_uri, item.label] + list(item.coded) for item in uris]
+                for word in question.split():
+                    word_relation_similarity = self.relation_linker.sorters[1].sort(word, question, uris)
+                    if len(word_relation_similarity) > 0:
+                        best_score = relations_sim[rel_id][0]
+                        if word_relation_similarity[0][4] > best_score:
+                            relations_sim[rel_id] = [word_relation_similarity[0][4], word]
+                        for item in word_relation_similarity:
+                            score = 0
+                            if item[0] in rel_sims[rel_id]:
+                                score = rel_sims[rel_id][item[0]]
+                            if item[4] > score:
+                                rel_sims[rel_id][item[0]] = item[4]
+                if len(rel_sims[rel_id]) == 0:
+                    for uri in uris:
+                        rel_sims[rel_id][uri[0]] = 0.1
+            return [[item[1][1]] for item in relations_sim.items()], [
+                {'surface': [question.index(relations_sim[rel_id][1]), len(relations_sim[rel_id][1])],
+                 'uris': [{'uri': item, 'confidence': rels[item]} for item in rels]} for rel_id, rels in
+                enumerate(rel_sims)]
+        except:
+            return None, None
+
+    def connecting_relations(self, candidate_entities, question):
+        offset = 0
+        while True:
+            surfaces_relations, candidate_relations = self.connecting_relations_offset(candidate_entities, question,
+                                                                                       offset)
+            offset += 0.1
+            if offset > 0.4 or (len(candidate_relations[0]['uris']) > 0 and len(candidate_relations[1]['uris']) > 0):
+                break
+
+        return surfaces_relations, candidate_relations
+
     def link(self, action, split_action, k, question, normalized_question_with_numbers):
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
@@ -180,16 +240,43 @@ class Environment:
             if len(self.action_seq) == len(self.input_seq):
                 surfaces, splitted_relations = self.find_surfaces(normalized_question_with_numbers,
                                                                   self.split_action_seq)
-                extra_candidates = []
+
+                if len(surfaces[0]) > 0 and max([len(item) for item in surfaces[0]]) > 2:
+                    for idx, item in enumerate(surfaces[0]):
+                        if len(item) > 2:
+                            surfaces[0].append([item[-1]])
+                            surfaces[0][idx] = item[:2]
                 candidate_entities, top_candidate_entities = self.entity_linker.ranked_link(
                     list(surfaces[1]), list(surfaces[0]), question, k, extra_candidates=None)
 
-                extra_candidates.extend(self.dataset.find_one_hop_relations(top_candidate_entities))
+                candidate_relations = None
+                if len(candidate_entities) == 2:
+                    surfaces_relations, candidate_relations = self.connecting_relations(candidate_entities, question)
+                    if candidate_relations is not None:
+                        surfaces[0] = surfaces_relations
+                if candidate_relations is None:
+                    extra_candidates_flatted = self.dataset.find_one_hop_relations(top_candidate_entities)
 
-                candidate_relations, _ = self.relation_linker.ranked_link(
-                    list(surfaces[0]), list(surfaces[1]), question, k, extra_candidates)
+                    candidate_relations1, _ = self.relation_linker.ranked_link(
+                        list(surfaces[0]), list(surfaces[1]), question, k, extra_candidates_flatted)
+                    if len(surfaces[0]) > 0 and len(extra_candidates_flatted) > 0:
+                        candidate_relations_2, _ = self.relation_linker.ranked_link(
+                            list(surfaces[0]), list(surfaces[1]), question, k, None)
+                        min_items = [[item['surface'], item['uris'][0]['confidence']] for item in candidate_relations1]
+                        min_item = min(min_items, key=lambda x: x[1])
+                        candidate_relations = []
+                        for item in candidate_relations1:
+                            if item['surface'] == min_item[0]:
+                                candidate_relations.append(
+                                    [item for item in candidate_relations_2 if item['surface'] == min_item[0]][0])
+                            else:
+                                candidate_relations.append(item)
+                    else:
+                        candidate_relations = candidate_relations1
 
-                result = {'surfaces': {'entities:': surfaces[1], 'relations': surfaces[0]},
+                chunks = [[item, 'entity'] for item in surfaces[1]] + [[item, 'relation'] for item in surfaces[0]]
+
+                result = {'chunks': [{'chunk': ' '.join(item[0]), 'class': item[1]} for item in chunks],
                           'entities': candidate_entities,
                           'relations': candidate_relations}
 
