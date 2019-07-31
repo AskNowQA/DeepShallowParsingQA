@@ -1,4 +1,6 @@
 import os
+import urllib
+import requests
 import ujson as json
 import logging.config
 
@@ -10,6 +12,64 @@ except KeyError:
     # No line profiler, provide a pass-through version
     def profile(func):
         return func
+
+
+class KB(object):
+    def __init__(self, endpoint, default_graph_uri=""):
+        self.endpoint = endpoint
+        self.default_graph_uri = default_graph_uri
+        self.type_uri = "type_uri"
+        self.server_available = self.check_server()
+
+    def check_server(self):
+        payload = {'query': 'select distinct ?Concept where {[] a ?Concept} LIMIT 1', 'format': 'application/json'}
+        try:
+            query_string = urllib.parse.urlencode(payload)
+            url = self.endpoint + '?' + query_string
+            r = requests.get(url)
+            if r.status_code == 200:
+                return True
+        except:
+            return False
+        return False
+
+    def query(self, q):
+        payload = {'query': q, 'format': 'application/json'}
+        try:
+            query_string = urllib.parse.urlencode(payload)
+            url = self.endpoint + '?' + query_string
+            r = requests.get(url)
+        except:
+            return 0, None
+
+        return r.status_code, r.json() if r.status_code == 200 else None
+
+
+class Cache:
+    def __init__(self, file_path):
+        self.dic = {}
+        self.file_path = file_path
+        if os.path.isfile(file_path):
+            with open(self.file_path, 'r') as file_handler:
+                self.dic = json.load(file_handler)
+        self.dirty_counter = 0
+
+    def has(self, key):
+        return key in self.dic
+
+    def get(self, key):
+        return self.dic[key]
+
+    def add(self, key, value):
+        self.dic[key] = value
+        self.dirty_counter += 1
+        if self.dirty_counter == 10:
+            self.save()
+            self.dirty_counter = 0
+
+    def save(self):
+        with open(self.file_path, 'w') as file_handler:
+            json.dump(self.dic, file_handler)
 
 
 class Utils:
@@ -85,29 +145,24 @@ class Utils:
         else:
             logging.basicConfig(level=default_level)
 
-
-class Cache:
-    def __init__(self, file_path):
-        self.dic = {}
-        self.file_path = file_path
-        if os.path.isfile(file_path):
-            with open(self.file_path, 'r') as file_handler:
-                self.dic = json.load(file_handler)
-        self.dirty_counter = 0
-
-    def has(self, key):
-        return key in self.dic
-
-    def get(self, key):
-        return self.dic[key]
-
-    def add(self, key, value):
-        self.dic[key] = value
-        self.dirty_counter += 1
-        if self.dirty_counter == 10:
-            self.save()
-            self.dirty_counter = 0
-
-    def save(self):
-        with open(self.file_path, 'w') as file_handler:
-            json.dump(self.dic, file_handler)
+    @staticmethod
+    def relations_connecting_entities(ent1, ent2, cache_path):
+        if not hasattr(Utils, 'cache'):
+            Utils.cache = Cache(cache_path)
+        key = ent1 + ':' + ent2
+        if not Utils.cache.has(key):
+            kb = KB('http://sda01dbpedia:softrock@131.220.9.219/sparql')
+            head = 'SELECT DISTINCT ?p1 ?p2 where {{ '
+            tail = 'FILTER ((regex(str(?p1), "dbpedia", "i")) && (!regex(str(?p1), "wiki", "i")) && (!regex(str(?p2), "wiki", "i")) && (!regex(str(?p2), "isCitedBy", "i")))}} limit 1000'
+            templates = ['<{ent1}>  ?p1  ?s1 .  <{ent2}>  ?p2  ?s1 . ',
+                         '?s1  ?p1  <{ent1}> .  ?s1  ?p2  <{ent2}> . ']
+            rel1 = rel2 = [], []
+            for item in templates:
+                sparql = head + item.format(ent1=ent1, ent2=ent2) + tail
+                output = kb.query(sparql)
+                if output[0] == 200:
+                    if len(output[1]['results']['bindings']) > 0:
+                        rel1 = set([item['p1']['value'] for item in output[1]['results']['bindings']])
+                        rel2 = set([item['p2']['value'] for item in output[1]['results']['bindings']])
+                Utils.cache.add(key, [rel1, rel2])
+        return Utils.cache.get(key)
