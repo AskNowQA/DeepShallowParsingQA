@@ -30,7 +30,7 @@ class LC_QuAD(Base_Dataset):
     def load_dataset(self, dataset_path, remove_entity_mention, remove_stop_words):
         if not os.path.isfile(dataset_path):
             return [], []
-        with open(dataset_path, 'r') as file_hanlder:
+        with open(dataset_path, 'r', encoding='utf-8') as file_hanlder:
             raw_dataset = json.load(file_hanlder)
             dataset = [QARow(item['corrected_question'],
                              item['annotation'] if 'annotation' in item else '',

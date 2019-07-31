@@ -23,7 +23,7 @@ class Base_Dataset:
 
         for qa_row in self.train_set + self.test_set:
             for relation in qa_row.sparql.relations:
-                relation.coded = self.__decode(relation)
+                relation.coded = self.decode(relation)
         # self.__update_relations_emb()
 
         self.coded_train_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.train_corpus]
@@ -35,7 +35,7 @@ class Base_Dataset:
             with open(self.config['entity_one_hop'], 'rb') as f:
                 self.one_hop = pk.load(f)
 
-    def __decode(self, relation, max_length=3):
+    def decode(self, relation, max_length=3):
         idxs = self.vocab.convertToIdx(map(str.lower, relation.tokens[:max_length]), '')
         length = len(idxs)
         if len(idxs) < max_length:
