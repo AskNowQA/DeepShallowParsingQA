@@ -56,6 +56,7 @@ if __name__ == '__main__':
     runner.environment.entity_linker = None
     runner.environment.relation_linker = None
 
+    print(runner.link("Who has been married to both Penny Lancaster and Alana Stewart?", k=10, e=0.1))
     logger.info("Starting the HTTP server")
     http_server = WSGIServer(('', args.port), app)
     http_server.serve_forever()
