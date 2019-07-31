@@ -28,7 +28,7 @@ from common.utils import *
 class Runner:
     def __init__(self, dataset, args):
         self.vocab = dataset.vocab
-        self.checkpoint_filename = os.path.join(config['base_path'], args.checkpoint)
+        self.checkpoint_filename = os.path.join(config['chk_path'], args.checkpoint)
         self.logger = logging.getLogger('main')
         self.word_vectorizer = dataset.word_vectorizer
         self.elastic = Elastic(config['elastic']['server'])
@@ -104,26 +104,28 @@ class Runner:
         self.agent.policy_network.zero_grad()
         e = args.e
         for epoch in iter:
-            for idx, qarow in enumerate(dataset.train_set):
-                reward, relation_mrr, entity_mrr, loss, actions = self.step(
-                    dataset.coded_train_corpus[idx],
-                    qarow.lower_indicator,
-                    qarow,
-                    e=e,
-                    k=args.k,
-                    train=True)
-                total_reward.append(reward)
-                total_entity_rmm.append(entity_mrr)
-                total_relation_rmm.append(relation_mrr)
-                total_loss.append(loss)
-                history[' '.join(qarow.normalized_question)].append(
-                    actions.__str__() + '{:0.2f},{:0.2f},{:0.2f}'.format(entity_mrr, relation_mrr, reward))
-                if idx % args.batchsize == 0:
-                    self.agent.policy_optimizer.step()
-                    self.agent.policy_network.zero_grad()
+            for coded_corpus, dataset_ in [[dataset.coded_train_corpus, dataset.train_set],
+                                           [dataset.coded_test_corpus, dataset.test_set]]:
+                for idx, qarow in enumerate(dataset_):
+                    reward, relation_mrr, entity_mrr, loss, actions = self.step(
+                        coded_corpus[idx],
+                        qarow.lower_indicator,
+                        qarow,
+                        e=e,
+                        k=args.k,
+                        train=True)
+                    total_reward.append(reward)
+                    total_entity_rmm.append(entity_mrr)
+                    total_relation_rmm.append(relation_mrr)
+                    total_loss.append(loss)
+                    # history[' '.join(qarow.normalized_question)].append(
+                    #     actions.__str__() + '{:0.2f},{:0.2f},{:0.2f}'.format(entity_mrr, relation_mrr, reward))
+                    if idx % args.batchsize == 0:
+                        self.agent.policy_optimizer.step()
+                        self.agent.policy_network.zero_grad()
 
-                    self.agent.split_optimizer.step()
-                    self.agent.split_network.zero_grad()
+                        self.agent.split_optimizer.step()
+                        self.agent.split_network.zero_grad()
 
             self.agent.policy_optimizer.step()
             self.agent.policy_network.zero_grad()
@@ -147,30 +149,31 @@ class Runner:
             print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss), np.mean(total_entity_rmm),
                                               np.mean(total_relation_rmm)])))
 
-    def test(self, dataset, args):
-        # earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
-        #
-        # self.environment.entity_linker = EntityOrderedLinker(
-        #     candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
-        #
-        # self.environment.relation_linker = RelationOrderedLinker(
-        #     candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
+    def test(self, dataset, args, q):
+        if q:
+            earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
 
-        self.environment.entity_linker = EntityOrderedLinker(
-            candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
-            sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
-            vocab=dataset.vocab)
+            self.environment.entity_linker = EntityOrderedLinker(
+                candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
 
-        self.environment.relation_linker = RelationOrderedLinker(
-            # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
-            #                             core_chains_path=config['lc_quad']['core_chains'],
-            #                             dataset=dataset),
-            candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
-            sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
-                     # StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True),
-                     EmbeddingSimilaritySorter(self.word_vectorizer)
-                     ],
-            vocab=dataset.vocab)
+            self.environment.relation_linker = RelationOrderedLinker(
+                candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
+
+            # self.environment.entity_linker = EntityOrderedLinker(
+            #     candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
+            #     sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
+            #     vocab=dataset.vocab)
+            #
+            # self.environment.relation_linker = RelationOrderedLinker(
+            #     # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
+            #     #                             core_chains_path=config['lc_quad']['core_chains'],
+            #     #                             dataset=dataset),
+            #     candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
+            #     sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
+            #              # StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True),
+            #              # EmbeddingSimilaritySorter(self.word_vectorizer)
+            #              ],
+            #     vocab=dataset.vocab)
 
         total_relation_mrr, total_entity_mrr = [], []
         # for idx, qarow in enumerate(dataset.train_set):
@@ -215,8 +218,10 @@ class Runner:
         rewards, action_log_probs, action_probs, actions, split_actions = [], [], [], [], []
         self.environment.init(coded_normalized_question, lower_indicator)
         self.agent.init()
+        states = []
         state = self.environment.state
         while True:
+            states.append(state)
             action, action_log_prob, action_prob, split_action = self.agent.select_action(state, e, False)
             split_actions.append(split_action)
             actions.append(int(action))
