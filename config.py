@@ -1,7 +1,7 @@
 import os
 
 config = {
-    'base_path': '/Users/hamid/workspace/DeepShallowParsingQA',
+    'base_path': '/data/workspace/DeepShallowParsingQA',
     'http': {
         'timeout': 120
     },
