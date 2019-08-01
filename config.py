@@ -10,10 +10,10 @@ config = {
         'endpoint': 'http://sda01dbpedia:softrock@131.220.9.219/sparql'
     },
     'EARL': {
-        'endpoint': 'http://131.220.9.219/iqa/processQuery'
+        'endpoint': 'http://sda.tech/earl/api/processQuery'
     },
     'elastic': {
-        'server': '127.0.0.1:9200',
+        'server': 'elastic:7200',
         'entity_ngram_index_config': {
             'settings': {
                 'max_ngram_diff': 10,
@@ -87,6 +87,7 @@ config = {
     }
 }
 config['data_path'] = os.path.join(config['base_path'], 'data')
+config['chk_path'] = os.path.join(config['data_path'], 'checkpoints')
 config['cache_path'] = os.path.join(config['data_path'], 'cache')
 config['env_cache_path'] = os.path.join(config['cache_path'], 'env.cache')
 config['glove_path'] = os.path.join(config['data_path'], 'glove/glove.840B.300d')
