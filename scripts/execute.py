@@ -24,15 +24,13 @@ if __name__ == '__main__':
     logger.addHandler(ch)
     logger.info(args)
 
-    lc_quad = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
-                      False, args.remove_stop_words)
-    qald_7_ml = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
-                          False, False)
     dataset = None
     if args.dataset == 'lcquad':
-        dataset = lc_quad
+        dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
+                          False, args.remove_stop_words)
     elif args.dataset == 'qald_7_ml':
-        dataset = qald_7_ml
+        dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
+                            False, False)
     runner = Runner(dataset, args)
 
     if args.mode == 'test':

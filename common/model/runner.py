@@ -97,6 +97,7 @@ class Runner:
 
     @profile
     def train(self, dataset, args):
+        self.agent.policy_network.train()
         total_reward, total_relation_rmm, total_entity_rmm, total_loss = [], [], [], []
         max_rmm, max_rmm_index = 0, -1
         iter = tqdm(range(args.epochs))
@@ -169,6 +170,7 @@ class Runner:
                 sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True)],
                 vocab=dataset.vocab)
 
+        self.agent.policy_network.eval()
         total_relation_mrr, total_entity_mrr = [], []
         for idx, qarow in enumerate(dataset.test_set):
             reward, relation_mrr, entity_mrr, loss, _ = self.step(
@@ -198,10 +200,10 @@ class Runner:
             self.environment.relation_linker = RelationOrderedLinker(
                 candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
                 sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
-                         EmbeddingSimilaritySorter(self.word_vectorizer)
-                         ],
+                         EmbeddingSimilaritySorter(self.word_vectorizer)],
                 vocab=self.vocab)
 
+        self.agent.policy_network.eval()
         normalized_question, normalized_question_with_numbers, lower_indicator = QARow.preprocess(question, [], False,
                                                                                                   False)
         coded_normalized_question = [self.vocab.getIndex(word, 0) for word in normalized_question]

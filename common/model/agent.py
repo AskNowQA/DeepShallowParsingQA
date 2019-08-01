@@ -4,7 +4,8 @@ from common.utils import *
 
 
 class Agent:
-    def __init__(self, number_of_relations, gamma, policy_network, split_network, policy_optimizer, split_optimizer):
+    def __init__(self, number_of_relations, gamma, policy_network, split_network, policy_optimizer, split_optimizer,
+                 no_split=True):
         self.gamma = gamma
         self.actions = range(number_of_relations + 1)
         self.policy_network = policy_network
@@ -17,6 +18,7 @@ class Agent:
             self.split_network.cuda()
         self.last_action = 0
         self.split_loss = torch.nn.BCELoss()
+        self.no_split = no_split
 
     def init(self):
         self.last_action = 0
@@ -39,8 +41,10 @@ class Agent:
         split_action = 0
         if action == self.last_action:
             if action == 1:
-                split_action = self.split_network(state)
-                # split_action = 1
+                if self.no_split:
+                    split_action = 1
+                else:
+                    split_action = self.split_network(state)
             if action == 2:
                 split_action = 1
         self.last_action = action
