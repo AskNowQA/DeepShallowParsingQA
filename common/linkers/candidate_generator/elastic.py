@@ -14,7 +14,7 @@ class Elastic:
 
         bulk_data = []
         counter = 0
-        uris = []
+        uris = set([])
         with open(input_path, 'r', encoding='utf-8') as file_handler:
             for line in tqdm(file_handler):
                 json_object = json.loads(line)['_source']
@@ -55,7 +55,7 @@ class Elastic:
                     op_dict = {"index": {"_index": index_name}}
                     bulk_data.append(op_dict)
                     bulk_data.append(data_dict)
-                    uris.append(uri)
+                    uris.add(uri)
 
                 if counter > 0 and counter % batch_size == 0:
                     self.bulk_indexing(index_name=index_name,
