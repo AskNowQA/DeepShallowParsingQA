@@ -149,8 +149,8 @@ class Runner:
             print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss), np.mean(total_entity_rmm),
                                               np.mean(total_relation_rmm)])))
 
-    def test(self, dataset, args, q):
-        if q:
+    def test(self, dataset, args, use_elastic=True, use_EARL=False):
+        if use_EARL:
             earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
 
             self.environment.entity_linker = EntityOrderedLinker(
@@ -158,27 +158,18 @@ class Runner:
 
             self.environment.relation_linker = RelationOrderedLinker(
                 candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
+        elif use_elastic:
+            self.environment.entity_linker = EntityOrderedLinker(
+                candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
+                sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
+                vocab=dataset.vocab)
 
-            # self.environment.entity_linker = EntityOrderedLinker(
-            #     candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
-            #     sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
-            #     vocab=dataset.vocab)
-            #
-            # self.environment.relation_linker = RelationOrderedLinker(
-            #     # candidate_generator=GraphCG(rel2id_path=config['lc_quad']['rel2id'],
-            #     #                             core_chains_path=config['lc_quad']['core_chains'],
-            #     #                             dataset=dataset),
-            #     candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
-            #     sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
-            #              # StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True),
-            #              # EmbeddingSimilaritySorter(self.word_vectorizer)
-            #              ],
-            #     vocab=dataset.vocab)
+            self.environment.relation_linker = RelationOrderedLinker(
+                candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
+                sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True)],
+                vocab=dataset.vocab)
 
         total_relation_mrr, total_entity_mrr = [], []
-        # for idx, qarow in enumerate(dataset.train_set):
-        #     reward, relation_mrr, entity_mrr, loss, _ = self.step(
-        #         dataset.coded_train_corpus[idx],
         for idx, qarow in enumerate(dataset.test_set):
             reward, relation_mrr, entity_mrr, loss, _ = self.step(
                 dataset.coded_test_corpus[idx],

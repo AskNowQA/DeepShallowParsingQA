@@ -40,6 +40,6 @@ if __name__ == '__main__':
     else:
         runner.train(dataset, args)
     logger.setLevel(logging.DEBUG)
-    runner.test(dataset, args)
+    runner.test(dataset, args, use_elastic=True)
     finish = time.time()
     print('total runtime:', finish - start)
