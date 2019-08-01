@@ -69,6 +69,9 @@ if __name__ == '__main__':
 
         elif 'relation' in args.index_name:
             index_config = config['elastic']['relation_whole_match_index_config']
+            e.create_index(index_config,
+                           config['dbpedia']['relations'],
+                           index_name=args.index_name)
             bulk_data = []
             manual_list = [{'uri': 'http://dbpedia.org/ontology/TelevisionShow', 'label': 'show'}]
             for item in manual_list:
@@ -80,11 +83,8 @@ if __name__ == '__main__':
                 bulk_data.append(op_dict)
                 bulk_data.append(data_dict)
             e.bulk_indexing(args.index_name, delete_index=False, index_config=index_config, bulk_data=bulk_data)
-            e.create_index(config['elastic']['relation_whole_match_index_config'],
-                           config['dbpedia']['relations'],
-                           index_name=args.index_name)
-            vocab = Vocab(filename=config['lc_quad']['vocab'], data=['<ent>', '<num>'])
 
+            vocab = Vocab(filename=config['lc_quad']['vocab'], data=['<ent>', '<num>'])
             coded_labels = {}
             max_length = 3
             with open(config['dbpedia']['relations'], 'r', encoding='utf-8') as file_handler:
