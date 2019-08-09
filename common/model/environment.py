@@ -225,7 +225,8 @@ class Environment:
 
         return surfaces_relations, candidate_relations
 
-    def link(self, action, split_action, k, question, normalized_question_with_numbers, connecting_relations):
+    def link(self, action, split_action, k, question, normalized_question_with_numbers, connecting_relations,
+             free_relation_match):
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
@@ -259,7 +260,7 @@ class Environment:
 
                     candidate_relations1, _ = self.relation_linker.ranked_link(
                         list(surfaces[0]), list(surfaces[1]), question, k, extra_candidates_flatted)
-                    if len(surfaces[0]) > 0 and len(extra_candidates_flatted) > 0:
+                    if len(surfaces[0]) > 0 and len(extra_candidates_flatted) > 0 and free_relation_match:
                         candidate_relations_2, _ = self.relation_linker.ranked_link(
                             list(surfaces[0]), list(surfaces[1]), question, k, None)
                         min_items = [[item['surface'], item['uris'][0]['confidence']] for item in candidate_relations1]
