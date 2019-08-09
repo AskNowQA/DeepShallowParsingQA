@@ -136,7 +136,7 @@ class OrderedLinker:
                             combined[k] = v
                         else:
                             combined[k].extend(v)
-                combined = [[k, min(sum(v) / len(v), 1)] for k, v in combined.items()]
+                combined = [[k, min(sum(v) / len(self.sorters), 1)] for k, v in combined.items()]
                 output2.append([item[0], sorted(combined, key=lambda x: x[1], reverse=True)])
             output = output2
         else:
