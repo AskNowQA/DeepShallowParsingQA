@@ -21,6 +21,9 @@ def link():
         flask.abort(400)
 
     question = flask.request.json['question']
+    connecting_relations = False
+    if 'connecting_relations' in flask.request.json:
+        connecting_relations = flask.request.json['connecting_relations']
     k = 5
     if 'k' in flask.request.json:
         k = flask.request.json['k']
@@ -28,7 +31,7 @@ def link():
     try:
         result = 'test'
         if runner is not None:
-            result = runner.link(question, k=k, e=0.1)
+            result = runner.link(question, k=k, e=0.1, connecting_relations=connecting_relations)
         return flask.jsonify(result), 201
     except RuntimeError as expt:
         logger.error(expt)

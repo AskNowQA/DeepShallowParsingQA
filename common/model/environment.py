@@ -225,7 +225,7 @@ class Environment:
 
         return surfaces_relations, candidate_relations
 
-    def link(self, action, split_action, k, question, normalized_question_with_numbers):
+    def link(self, action, split_action, k, question, normalized_question_with_numbers, connecting_relations):
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
@@ -250,7 +250,7 @@ class Environment:
                     list(surfaces[1]), list(surfaces[0]), question, k, extra_candidates=None)
 
                 candidate_relations = None
-                if len(candidate_entities) == 2:
+                if connecting_relations and len(candidate_entities) == 2:
                     surfaces_relations, candidate_relations = self.connecting_relations(candidate_entities, question)
                     if candidate_relations is not None:
                         surfaces[0] = surfaces_relations
