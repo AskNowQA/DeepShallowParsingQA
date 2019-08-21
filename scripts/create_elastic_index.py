@@ -94,7 +94,7 @@ if __name__ == '__main__':
                     if 'http://dbpedia.org/' in uri:
                         uri = URI(uri)
                         if uri.raw_uri not in coded_labels:
-                            idxs = vocab.convertToIdx(uri.tokens, '')[:max_length]
+                            idxs = vocab.convertToIdx(map(str.lower, uri.tokens), '')[:max_length]
                             length = len(idxs)
                             if len(idxs) < max_length:
                                 idxs = idxs + [0] * (max_length - len(idxs))
