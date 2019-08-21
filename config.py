@@ -13,7 +13,7 @@ config = {
         'endpoint': 'http://sda.tech/earl/api/processQuery'
     },
     'elastic': {
-        'server': 'elastic:9200',
+        'server': 'iqa-elastic:9200',
         'entity_ngram_index_config': {
             'settings': {
                 'max_ngram_diff': 10,
