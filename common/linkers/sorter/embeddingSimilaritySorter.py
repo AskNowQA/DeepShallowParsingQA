@@ -40,5 +40,5 @@ class EmbeddingSimilaritySorter:
         filtered_candidates = candidates[threshold]
         sorted_idx = np.argsort(candidates_similarity[threshold])[::-1]
         sorted_candidates = filtered_candidates[sorted_idx]
-        output = np.hstack((sorted_candidates, candidates_similarity[threshold].reshape(-1, 1)))
+        output = np.hstack((sorted_candidates, candidates_similarity[threshold][sorted_idx].reshape(-1, 1)))
         return output
