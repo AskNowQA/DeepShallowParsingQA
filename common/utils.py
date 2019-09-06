@@ -147,16 +147,16 @@ class Utils:
 
     @staticmethod
     def relations_connecting_entities(ent1, ent2, cache_path):
-        if not hasattr(Utils, 'cache'):
-            Utils.cache = Cache(cache_path)
+        if not hasattr(Utils, 'relations_connecting_entities_cache'):
+            Utils.relations_connecting_entities_cache = Cache(cache_path)
         key = ent1 + ':' + ent2
-        if not Utils.cache.has(key):
+        if not Utils.relations_connecting_entities_cache.has(key):
             kb = KB('http://sda01dbpedia:softrock@131.220.9.219/sparql')
             head = 'SELECT DISTINCT ?p1 ?p2 where {{ '
             tail = 'FILTER ((regex(str(?p1), "dbpedia", "i")) && (!regex(str(?p1), "wiki", "i")) && (!regex(str(?p2), "wiki", "i")) && (!regex(str(?p2), "isCitedBy", "i")))}} limit 1000'
             templates = ['<{ent1}>  ?p1  ?s1 .  <{ent2}>  ?p2  ?s1 . ',
                          '?s1  ?p1  <{ent1}> .  ?s1  ?p2  <{ent2}> . ']
-            rel1 = rel2 = [], []
+            candidate_relations = []
             for item in templates:
                 sparql = head + item.format(ent1=ent1, ent2=ent2) + tail
                 output = kb.query(sparql)
@@ -164,5 +164,30 @@ class Utils:
                     if len(output[1]['results']['bindings']) > 0:
                         rel1 = set([item['p1']['value'] for item in output[1]['results']['bindings']])
                         rel2 = set([item['p2']['value'] for item in output[1]['results']['bindings']])
-                Utils.cache.add(key, [rel1, rel2])
-        return Utils.cache.get(key)
+                        candidate_relations.extend([rel1, rel2])
+            # candidate_relations = [set([t for item in candidate_relations for t in item[0] if len(t) > 0]),
+            #                        set([t for item in candidate_relations for t in item[1] if len(t) > 0])]
+            Utils.relations_connecting_entities_cache.add(key, candidate_relations)
+        return Utils.relations_connecting_entities_cache.get(key)
+
+    @staticmethod
+    def relation_connecting_entities(ent1, ent2, cache_path):
+        if not hasattr(Utils, 'relation_connecting_entities_cache'):
+            Utils.relation_connecting_entities_cache = Cache(cache_path)
+        key = ent1 + ':' + ent2
+        if not Utils.relation_connecting_entities_cache.has(key):
+            kb = KB('http://sda01dbpedia:softrock@131.220.9.219/sparql')
+            head = 'SELECT DISTINCT ?p1 where { '
+            tail = 'FILTER ((regex(str(?p1), "dbpedia", "i")) && (!regex(str(?p1), "wiki", "i")) )} limit 1000'
+            templates = ['<{ent1}>  ?p1  <{ent2}>. ',
+                         '<{ent2}>  ?p1  <{ent1}>. ']
+            candidate_relations = []
+            for item in templates:
+                sparql = head + item.format(ent1=ent1, ent2=ent2) + tail
+                output = kb.query(sparql)
+                if output[0] == 200:
+                    if len(output[1]['results']['bindings']) > 0:
+                        rels = set([item['p1']['value'] for item in output[1]['results']['bindings']])
+                        candidate_relations.extend(rels)
+            Utils.relation_connecting_entities_cache.add(key, candidate_relations)
+        return Utils.relation_connecting_entities_cache.get(key)

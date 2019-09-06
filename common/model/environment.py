@@ -183,7 +183,6 @@ class Environment:
 
             candidate_relations = [set([t for item in candidate_relations for t in item[0] if len(t) > 0]),
                                    set([t for item in candidate_relations for t in item[1] if len(t) > 0])]
-            # candidate_relations = Utils.relations_connecting_entities(*top_candidate_entities, 'q.cache')
             relations_sim, rel_sims = {}, []
             for rel_id, relations in enumerate(candidate_relations):
                 rel_sims.append({})
@@ -214,19 +213,68 @@ class Environment:
         except:
             return None, None
 
-    def connecting_relations(self, candidate_entities, question):
+    def connecting_relation_offset(self, candidate_entities, question, offset):
+        try:
+            c1 = candidate_entities[0]['uris'][0]['confidence'] - offset
+            c2 = candidate_entities[1]['uris'][0]['confidence'] - offset
+            candidate_relations = []
+            for first_entity in candidate_entities[0]['uris']:
+                if first_entity['confidence'] < c1:
+                    break
+                for second_entity in candidate_entities[1]['uris']:
+                    if second_entity['confidence'] < c2:
+                        break
+                    try:
+                        relations = Utils.relation_connecting_entities(
+                            first_entity['uri'], second_entity['uri'], 'q2.cache')
+                        if len(relations) > 0:
+                            candidate_relations.append(relations)
+                    except:
+                        pass
+            if len(candidate_relations) == 0:
+                return None, None
+            relations_sim, rel_sims = {}, []
+            for rel_id, relations in enumerate(candidate_relations):
+                rel_sims.append({})
+                relations_sim[rel_id] = [0, '']
+                uris = [URI(item) for item in relations]
+                for uri in uris:
+                    uri.coded = self.dataset.decode(uri)
+                uris = [[item.raw_uri, item.label] + list(item.coded) for item in uris]
+                for word in question.split():
+                    word_relation_similarity = self.relation_linker.sorters[1].sort(word, question, uris)
+                    if len(word_relation_similarity) > 0:
+                        best_score = relations_sim[rel_id][0]
+                        if word_relation_similarity[0][4] > best_score:
+                            relations_sim[rel_id] = [word_relation_similarity[0][4], word]
+                        for item in word_relation_similarity:
+                            score = 0
+                            if item[0] in rel_sims[rel_id]:
+                                score = rel_sims[rel_id][item[0]]
+                            if item[4] > score:
+                                rel_sims[rel_id][item[0]] = item[4]
+                if len(rel_sims[rel_id]) == 0:
+                    for uri in uris:
+                        rel_sims[rel_id][uri[0]] = 0.1
+            return [[item[1][1]] for item in relations_sim.items()], [
+                {'surface': [question.index(relations_sim[rel_id][1]), len(relations_sim[rel_id][1])],
+                 'uris': [{'uri': item, 'confidence': rels[item]} for item in rels]} for rel_id, rels in
+                enumerate(rel_sims)]
+        except:
+            return None, None
+
+    def connecting_relations(self, fn, candidate_entities, question):
         offset = 0
         while True:
-            surfaces_relations, candidate_relations = self.connecting_relations_offset(candidate_entities, question,
-                                                                                       offset)
+            surfaces_relations, candidate_rels = fn(candidate_entities, question, offset)
             offset += 0.1
-            if offset > 0.4 or (len(candidate_relations[0]['uris']) > 0 and len(candidate_relations[1]['uris']) > 0):
+            if offset > 0.4 or (candidate_rels is not None and all([len(item['uris']) > 0 for item in candidate_rels])):
                 break
 
-        return surfaces_relations, candidate_relations
+        return surfaces_relations, candidate_rels
 
     def link(self, action, split_action, k, question, normalized_question_with_numbers, connecting_relations,
-             free_relation_match):
+             free_relation_match, connecting_relation):
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
@@ -251,8 +299,14 @@ class Environment:
                     list(surfaces[1]), list(surfaces[0]), question, k, extra_candidates=None)
 
                 candidate_relations = None
+                if connecting_relation and len(candidate_entities) == 2:
+                    surfaces_relations, candidate_relations = self.connecting_relations(
+                        self.connecting_relation_offset, candidate_entities, question)
+                    if candidate_relations is not None:
+                        surfaces[0] = surfaces_relations
                 if connecting_relations and len(candidate_entities) == 2:
-                    surfaces_relations, candidate_relations = self.connecting_relations(candidate_entities, question)
+                    surfaces_relations, candidate_relations = self.connecting_relations(
+                        self.connecting_relations_offset, candidate_entities, question)
                     if candidate_relations is not None:
                         surfaces[0] = surfaces_relations
                 if candidate_relations is None:

@@ -190,7 +190,7 @@ class Runner:
         print('relation MRR', total_relation_mrr)
         return total_entity_mrr, total_relation_mrr
 
-    def link(self, question, e, k, connecting_relations=False, free_relation_match=False):
+    def link(self, question, e, k, connecting_relations=False, free_relation_match=False, connecting_relation=False):
         if self.environment.entity_linker is None:
             self.environment.entity_linker = EntityOrderedLinker(
                 candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
@@ -224,7 +224,8 @@ class Runner:
                                                             question,
                                                             normalized_question_with_numbers,
                                                             connecting_relations,
-                                                            free_relation_match)
+                                                            free_relation_match,
+                                                            connecting_relation)
             state = new_state
             if done:
                 break
