@@ -312,22 +312,17 @@ class Environment:
                 if candidate_relations is None:
                     extra_candidates_flatted = self.dataset.find_one_hop_relations(top_candidate_entities)
 
-                    candidate_relations1, _ = self.relation_linker.ranked_link(
+                    candidate_relations_1, _ = self.relation_linker.ranked_link(
                         list(surfaces[0]), list(surfaces[1]), question, k, extra_candidates_flatted)
                     if len(surfaces[0]) > 0 and len(extra_candidates_flatted) > 0 and free_relation_match:
                         candidate_relations_2, _ = self.relation_linker.ranked_link(
                             list(surfaces[0]), list(surfaces[1]), question, k, None)
-                        min_items = [[item['surface'], item['uris'][0]['confidence']] for item in candidate_relations1]
-                        min_item = min(min_items, key=lambda x: x[1])
                         candidate_relations = []
-                        for item in candidate_relations1:
-                            if item['surface'] == min_item[0]:
-                                candidate_relations.append(
-                                    [item for item in candidate_relations_2 if item['surface'] == min_item[0]][0])
-                            else:
-                                candidate_relations.append(item)
+                        for item1, item2 in zip(candidate_relations_1, candidate_relations_2):
+                            candidate_relations.append(
+                                {'surface': item1['surface'], 'uris': item1['uris'] + item2['uris']})
                     else:
-                        candidate_relations = candidate_relations1
+                        candidate_relations = candidate_relations_1
 
                 chunks = [[item, 'entity'] for item in surfaces[1]] + [[item, 'relation'] for item in surfaces[0]]
 
