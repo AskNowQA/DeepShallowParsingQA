@@ -178,8 +178,7 @@ class Environment:
                     if second_entity['confidence'] < c2:
                         break
                     candidate_relations.append(
-                        Utils.relations_connecting_entities(first_entity['uri'], second_entity['uri'],
-                                                            'q.cache'))
+                        Utils.relations_connecting_entities(first_entity['uri'], second_entity['uri'], 'q.cache'))
 
             candidate_relations = [set([t for item in candidate_relations for t in item[0] if len(t) > 0]),
                                    set([t for item in candidate_relations for t in item[1] if len(t) > 0])]
@@ -203,9 +202,10 @@ class Environment:
                                 score = rel_sims[rel_id][item[0]]
                             if item[4] > score:
                                 rel_sims[rel_id][item[0]] = item[4]
-                if len(rel_sims[rel_id]) == 0:
+                if len(rel_sims[rel_id]) != len(uris):
                     for uri in uris:
-                        rel_sims[rel_id][uri[0]] = 0.1
+                        if uri[0] not in rel_sims[rel_id]:
+                            rel_sims[rel_id][uri[0]] = 0.1
             return [[item[1][1]] for item in relations_sim.items()], [
                 {'surface': [question.index(relations_sim[rel_id][1]), len(relations_sim[rel_id][1])],
                  'uris': [{'uri': item, 'confidence': rels[item]} for item in rels]} for rel_id, rels in
@@ -268,9 +268,15 @@ class Environment:
         while True:
             surfaces_relations, candidate_rels = fn(candidate_entities, question, offset)
             offset += 0.1
-            if offset > 0.4 or (candidate_rels is not None and all([len(item['uris']) > 0 for item in candidate_rels])):
+            if offset > 0.4:
                 break
-
+            if all([''.join(s) == '' for s in surfaces_relations]):
+                continue
+            if candidate_rels is not None and all([len(item['uris']) > 0 for item in candidate_rels]):
+                break
+        for rel in candidate_rels:
+            if len(rel['uris']) > 10:
+                rel['uris'] = [item for item in rel['uris'] if item['confidence'] > 0.1]
         return surfaces_relations, candidate_rels
 
     def link(self, action, split_action, k, question, normalized_question_with_numbers, connecting_relations,

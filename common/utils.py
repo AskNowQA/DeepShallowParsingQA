@@ -156,7 +156,7 @@ class Utils:
             tail = 'FILTER ((regex(str(?p1), "dbpedia", "i")) && (!regex(str(?p1), "wiki", "i")) && (!regex(str(?p2), "wiki", "i")) && (!regex(str(?p2), "isCitedBy", "i")))}} limit 1000'
             templates = ['<{ent1}>  ?p1  ?s1 .  <{ent2}>  ?p2  ?s1 . ',
                          '?s1  ?p1  <{ent1}> .  ?s1  ?p2  <{ent2}> . ']
-            candidate_relations = []
+            p1s, p2s = [], []
             for item in templates:
                 sparql = head + item.format(ent1=ent1, ent2=ent2) + tail
                 output = kb.query(sparql)
@@ -164,9 +164,11 @@ class Utils:
                     if len(output[1]['results']['bindings']) > 0:
                         rel1 = set([item['p1']['value'] for item in output[1]['results']['bindings']])
                         rel2 = set([item['p2']['value'] for item in output[1]['results']['bindings']])
-                        candidate_relations.extend([rel1, rel2])
+                        p1s.extend(rel1)
+                        p2s.extend(rel2)
             # candidate_relations = [set([t for item in candidate_relations for t in item[0] if len(t) > 0]),
             #                        set([t for item in candidate_relations for t in item[1] if len(t) > 0])]
+            candidate_relations = [p1s, p2s]
             Utils.relations_connecting_entities_cache.add(key, candidate_relations)
         return Utils.relations_connecting_entities_cache.get(key)
 
