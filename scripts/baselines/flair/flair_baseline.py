@@ -13,16 +13,24 @@ from config import config
 from flair.data import Sentence
 from flair.models import SequenceTagger
 
-# dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
-#                   False, False)
-dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
-                    False, False)
+dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
+                  False, False)
+# dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
+#                     False, False)
 
 chunk_tagger = SequenceTagger.load('chunk')
+ner_tagger = SequenceTagger.load('ner')
 
 
 def get_phrases(sentence):
     sentence = Sentence(sentence)
+    # ner_tagger.predict(sentence)
+    # entities = []
+    # for item in sentence.get_spans('ner'):
+    #     entities.append(item.text.split())
+    # relations = []
+    # return [relations, entities]
+
     chunk_tagger.predict(sentence)
 
     entities = []
@@ -65,3 +73,15 @@ if __name__ == '__main__':
         total_relation_rmm.append(relation_mrr)
 
     print([np.mean(total_entity_rmm), np.mean(total_relation_rmm)])
+
+# Q7
+# FLAIR chunker
+# [0.21066666666666667, 0.0]
+# FLAIR ner
+# [0.43]
+
+#LC-QuAD
+# FLAIR chunker
+# [0.28, 0.05]
+# FLAIR ner
+# [0.59]
