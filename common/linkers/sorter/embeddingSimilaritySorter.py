@@ -15,30 +15,34 @@ class EmbeddingSimilaritySorter:
 
     @profile
     def sort(self, surface, question, candidates):
-        if len(candidates) == 0:  # or len(candidates[0]) < 3:
+        try:
+            if len(candidates) == 0:  # or len(candidates[0]) < 3:
+                return []
+            surface_embeddings = self.word_vectorizer.decode(surface)
+            surface_embeddings = torch.mean(surface_embeddings, dim=0).reshape(1, -1)
+
+            candidates = np.array(candidates, dtype=object)
+            candidates_coded = candidates[:, 2]
+            lengths = candidates[:, 3]
+            lens = torch.FloatTensor(lengths.astype(float)).reshape(-1, 1)
+            candidates_coded = torch.stack(candidates_coded.tolist())
+
+            if torch.cuda.is_available():
+                surface_embeddings = surface_embeddings.cuda()
+                candidates_coded = candidates_coded.cuda()
+                lens = lens.cuda()
+            candidates_embeddings = self.emb(candidates_coded)
+            candidates_embeddings_mean = torch.sum(candidates_embeddings, dim=1) / lens
+            candidates_similarity = torch.nn.functional.cosine_similarity(surface_embeddings, candidates_embeddings_mean)
+            if candidates_similarity.is_cuda:
+                candidates_similarity = candidates_similarity.cpu()
+            candidates_similarity = candidates_similarity.data.numpy()
+            threshold = candidates_similarity > 0.4
+            filtered_candidates = candidates[threshold]
+            sorted_idx = np.argsort(candidates_similarity[threshold])[::-1]
+            sorted_candidates = filtered_candidates[sorted_idx]
+            output = np.hstack((sorted_candidates, candidates_similarity[threshold][sorted_idx].reshape(-1, 1)))
+            return output
+        except:
             return []
-        surface_embeddings = self.word_vectorizer.decode(surface)
-        surface_embeddings = torch.mean(surface_embeddings, dim=0).reshape(1, -1)
 
-        candidates = np.array(candidates, dtype=object)
-        candidates_coded = candidates[:, 2]
-        lengths = candidates[:, 3]
-        lens = torch.FloatTensor(lengths.astype(float)).reshape(-1, 1)
-        candidates_coded = torch.stack(candidates_coded.tolist())
-
-        if torch.cuda.is_available():
-            surface_embeddings = surface_embeddings.cuda()
-            candidates_coded = candidates_coded.cuda()
-            lens = lens.cuda()
-        candidates_embeddings = self.emb(candidates_coded)
-        candidates_embeddings_mean = torch.sum(candidates_embeddings, dim=1) / lens
-        candidates_similarity = torch.nn.functional.cosine_similarity(surface_embeddings, candidates_embeddings_mean)
-        if candidates_similarity.is_cuda:
-            candidates_similarity = candidates_similarity.cpu()
-        candidates_similarity = candidates_similarity.data.numpy()
-        threshold = candidates_similarity > 0.4
-        filtered_candidates = candidates[threshold]
-        sorted_idx = np.argsort(candidates_similarity[threshold])[::-1]
-        sorted_candidates = filtered_candidates[sorted_idx]
-        output = np.hstack((sorted_candidates, candidates_similarity[threshold][sorted_idx].reshape(-1, 1)))
-        return output
