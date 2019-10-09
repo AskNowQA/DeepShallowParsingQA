@@ -22,6 +22,7 @@ class Agent:
 
     def init(self):
         self.last_action = 0
+        self.policy_network.init()
 
     @profile
     def select_action(self, state, e, train):
