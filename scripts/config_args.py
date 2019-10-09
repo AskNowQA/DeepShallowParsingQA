@@ -17,5 +17,7 @@ def parse_args():
     parser.add_argument('--dataset', default='lcquad', help='`lcquad` or `qald_7_ml`')
     parser.add_argument('--checkpoint', default='checkpoint.chpt', help='name of checkpoint file')
     parser.add_argument('--port', default=5000, type=int, help='Port')
+    parser.add_argument('--b', default=1, type=int, help='number of prev/next words')
+    parser.add_argument('--policy', default='nn', help='type of policy network: nn OR lstm or bilstm')
     args = parser.parse_args()
     return args

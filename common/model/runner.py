@@ -10,6 +10,7 @@ import os
 from config import config
 from common.model.agent import Agent
 from common.model.policy import Policy
+from common.model.lstmPolicy import LSTMPolicy
 from common.model.policySplit import PolicySplit
 from common.model.environment import Environment
 from common.linkers.relationOrderLinker import RelationOrderedLinker
@@ -50,12 +51,24 @@ class Runner:
                      EmbeddingSimilaritySorter(self.word_vectorizer)],
             vocab=dataset.vocab)
 
-        policy_network = Policy(vocab_size=dataset.vocab.size(),
-                                emb_size=self.word_vectorizer.word_size,
-                                input_size=(self.word_vectorizer.word_size + 1) * 3 + 1 + 1,
-                                hidden_size=self.word_vectorizer.word_size,
-                                output_size=3,
-                                dropout_ratio=args.dropout)
+        b = args.b
+        if 'lstm' in args.policy:
+            policy_network = LSTMPolicy(vocab_size=dataset.vocab.size(),
+                                        emb_size=self.word_vectorizer.word_size,
+                                        input_size=(self.word_vectorizer.word_size + 1) * (2 * b + 1) + 2,
+                                        hidden_size=self.word_vectorizer.word_size,
+                                        output_size=3,
+                                        dropout_ratio=args.dropout,
+                                        emb_idx=2 + 2 * b + 1,
+                                        bidirectional=args.policy == 'bilstm')
+        else:
+            policy_network = Policy(vocab_size=dataset.vocab.size(),
+                                    emb_size=self.word_vectorizer.word_size,
+                                    input_size=(self.word_vectorizer.word_size + 1) * (2 * b + 1) + 2,
+                                    hidden_size=self.word_vectorizer.word_size,
+                                    output_size=3,
+                                    dropout_ratio=args.dropout,
+                                    emb_idx=2 + 2 * b + 1)
         policy_network.emb.weight.data.copy_(self.word_vectorizer.emb)
         split_network = PolicySplit(vocab_size=dataset.vocab.size(),
                                     emb_size=self.word_vectorizer.word_size,
@@ -77,7 +90,8 @@ class Runner:
                                        relation_linker=relation_linker,
                                        positive_reward=args.positive_reward,
                                        negative_reward=args.negative_reward,
-                                       dataset=dataset)
+                                       dataset=dataset,
+                                       b=b)
 
     def load_checkpoint(self, checkpoint_filename=None):
         if checkpoint_filename is None:
@@ -146,35 +160,59 @@ class Runner:
                 #     if epoch >= max_rmm_index + 30:
                 #         iter.close()•
                 #         break
+                self.test(dataset, args, use_elastic=True, verbos=False)
         if len(total_reward) > 0:
             print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss), np.mean(total_entity_rmm),
                                               np.mean(total_relation_rmm)])))
 
-    def test(self, dataset, args, use_elastic=True, use_EARL=False):
+    def test_train(self, dataset, args, use_elastic=True, use_EARL=False, verbos=True):
+        current_entity_linker = self.environment.entity_linker
+        current_relation_linker = self.environment.relation_linker
+        if not verbos:
+            self.logger.setLevel(logging.INFO)
+        results = self.test_dataset(dataset.vocab, dataset.train_set, dataset.coded_train_corpus, args, use_elastic,
+                                    use_EARL, verbos)
+        self.environment.entity_linker = current_entity_linker
+        self.environment.relation_linker = current_relation_linker
+        return results
+
+    def test(self, dataset, args, use_elastic=True, use_EARL=False, verbos=True):
+        current_entity_linker = self.environment.entity_linker
+        current_relation_linker = self.environment.relation_linker
+        if not verbos:
+            self.logger.setLevel(logging.INFO)
+        results = self.test_dataset(dataset.vocab, dataset.test_set, dataset.coded_test_corpus, args, use_elastic,
+                                    use_EARL, verbos)
+        self.environment.entity_linker = current_entity_linker
+        self.environment.relation_linker = current_relation_linker
+        return results
+
+    def test_dataset(self, vocab, test_set, coded_test_corpus, args, use_elastic=True, use_EARL=False, verbos=True):
         if use_EARL:
             earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
 
             self.environment.entity_linker = EntityOrderedLinker(
-                candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
+                candidate_generator=earlCG, sorters=[], vocab=vocab)
 
             self.environment.relation_linker = RelationOrderedLinker(
-                candidate_generator=earlCG, sorters=[], vocab=dataset.vocab)
+                candidate_generator=earlCG, sorters=[], vocab=vocab)
         elif use_elastic:
             self.environment.entity_linker = EntityOrderedLinker(
                 candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
                 sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True)],
-                vocab=dataset.vocab)
+                vocab=vocab)
 
             self.environment.relation_linker = RelationOrderedLinker(
                 candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
-                sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True)],
-                vocab=dataset.vocab)
+                sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
+                         EmbeddingSimilaritySorter(self.word_vectorizer)],
+                vocab=vocab)
 
         self.agent.policy_network.eval()
         total_relation_mrr, total_entity_mrr = [], []
-        for idx, qarow in enumerate(dataset.test_set):
+        for idx, qarow in enumerate(test_set):
             reward, relation_mrr, entity_mrr, loss, _ = self.step(
-                dataset.coded_test_corpus[idx],
+                coded_test_corpus[idx],
                 qarow.lower_indicator, qarow,
                 e=args.e,
                 train=False,
@@ -188,6 +226,7 @@ class Runner:
         total_relation_mrr = np.mean(total_relation_mrr)
         print('entity MRR', total_entity_mrr)
         print('relation MRR', total_relation_mrr)
+        self.agent.policy_network.train(False)
         return total_entity_mrr, total_relation_mrr
 
     def link(self, question, e, k, connecting_relations=False, free_relation_match=False, connecting_relation=False):
