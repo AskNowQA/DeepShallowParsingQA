@@ -6,7 +6,7 @@ from common.dataset.container.uri import URI
 
 
 class Environment:
-    def __init__(self, entity_linker, relation_linker, positive_reward=1, negative_reward=-0.5, dataset=None):
+    def __init__(self, entity_linker, relation_linker, positive_reward=1, negative_reward=-0.5, dataset=None, b=1):
         self.positive_reward = positive_reward
         self.negative_reward = negative_reward
         self.entity_linker = entity_linker
@@ -16,35 +16,40 @@ class Environment:
         self.input_seq_size, self.seq_counter, self.num_surface = 0, 0, 0
         self.logger = logging.getLogger('main')
         self.cache = Cache(config['env_cache_path'])
+        self.b = b
 
     def init(self, input_seq, lower_indicator):
         self.input_seq = torch.LongTensor(input_seq)
         self.lower_indicator = torch.LongTensor(lower_indicator)
         self.input_seq_size = len(self.input_seq)
         self.seq_counter = 0
-        self.state = torch.cat((torch.LongTensor([0, 0]), self.next_token()))
+        self.state = torch.cat((torch.LongTensor([0, 0]), self.next_token(self.b)))
         self.action_seq = []
         self.split_action_seq = []
         self.num_surface = 0
 
-    def next_token(self):
+    def next_token(self, b):
         idx = self.seq_counter % self.input_seq_size
-        if idx == 0:
-            prev_token = torch.LongTensor([0])
-            prev_extra = torch.LongTensor([0])
-        else:
-            prev_token = self.input_seq[idx - 1].reshape(-1)
-            prev_extra = self.lower_indicator[idx - 1].reshape(-1)
+        prev_tokens = torch.LongTensor([0] * b)
+        prev_extras = torch.LongTensor([0] * b)
+        p_i = 0
+        for i in range(idx - b, idx):
+            if i >= 0:
+                prev_tokens[p_i] = self.input_seq[i].reshape(-1)
+                prev_extras[p_i] = self.lower_indicator[i].reshape(-1)
+            p_i += 1
 
         current_token = self.input_seq[idx].reshape(-1)
         current_extra = self.lower_indicator[idx].reshape(-1)
-        if idx + 1 == self.input_seq_size:
-            next_token = torch.LongTensor([0])
-            next_extra = torch.LongTensor([0])
-        else:
-            next_token = self.input_seq[idx + 1].reshape(-1)
-            next_extra = self.lower_indicator[idx + 1].reshape(-1)
-        output = torch.cat((prev_extra, current_extra, next_extra, prev_token, current_token, next_token))
+        n_i = 0
+        next_tokens = torch.LongTensor([0] * b)
+        next_extras = torch.LongTensor([0] * b)
+        for i in range(idx, idx + b):
+            if i < self.input_seq_size - 1:
+                next_tokens[n_i] = self.input_seq[i + 1].reshape(-1)
+                next_extras[n_i] = self.lower_indicator[i + 1].reshape(-1)
+            n_i += 1
+        output = torch.cat((prev_extras, current_extra, next_extras, prev_tokens, current_token, next_tokens))
         self.seq_counter += 1
         return output
 
@@ -86,7 +91,7 @@ class Environment:
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
-        self.state = self.update_state(action, self.next_token())
+        self.state = self.update_state(action, self.next_token(self.b))
         self.action_seq.append(action)
         self.split_action_seq.append(split_action)
 
@@ -284,7 +289,7 @@ class Environment:
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
-        self.state = self.update_state(action, self.next_token())
+        self.state = self.update_state(action, self.next_token(self.b))
         self.action_seq.append(action)
         self.split_action_seq.append(split_action)
 

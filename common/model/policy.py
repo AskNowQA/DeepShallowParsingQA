@@ -3,9 +3,10 @@ import torch.nn as nn
 
 
 class Policy(nn.Module):
-    def __init__(self, vocab_size, emb_size, input_size, hidden_size, output_size, dropout_ratio):
+    def __init__(self, vocab_size, emb_size, input_size, hidden_size, output_size, dropout_ratio, emb_idx):
         super(Policy, self).__init__()
         self.output_size = output_size
+        self.emb_idx = emb_idx
         bias = True
 
         self.emb = nn.Embedding(vocab_size, emb_size, padding_idx=0, sparse=False)
@@ -21,9 +22,12 @@ class Policy(nn.Module):
         self.layer3 = nn.Linear(hidden_size // 2, output_size, bias=bias)
         self.activation3 = nn.Softmax(dim=0)
 
+    def init(self):
+        pass
+
     def forward(self, input):
-        input = torch.cat((input[:5].float().reshape(-1),
-                           self.emb(input[5:]).reshape(-1)))
+        input = torch.cat((input[:self.emb_idx].float().reshape(-1),
+                           self.emb(input[self.emb_idx:]).reshape(-1)))
         output_layer1 = self.activation1(self.layer1(input))
         output_layer1 = self.dropout(output_layer1)
         output_layer2 = self.activation2(self.layer2(output_layer1))
