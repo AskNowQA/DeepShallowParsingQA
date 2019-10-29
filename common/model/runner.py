@@ -160,7 +160,10 @@ class Runner:
                 #     if epoch >= max_rmm_index + 30:
                 #         iter.close()•
                 #         break
-                self.test(dataset, args, use_elastic=True, verbos=False)
+                try:
+                    self.test(dataset, args, use_elastic=True, verbos=False)
+                except Exception as e:
+                    print(e)
         if len(total_reward) > 0:
             print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss), np.mean(total_entity_rmm),
                                               np.mean(total_relation_rmm)])))
