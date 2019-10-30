@@ -160,10 +160,7 @@ class Runner:
                 #     if epoch >= max_rmm_index + 30:
                 #         iter.close()•
                 #         break
-                try:
-                    self.test(dataset, args, use_elastic=True, verbos=False)
-                except Exception as error:
-                    print(error)
+                self.test(dataset, args, use_elastic=True, verbos=False)
         if len(total_reward) > 0:
             print(list(map('{:0.2f}'.format, [np.mean(total_reward), np.mean(total_loss), np.mean(total_entity_rmm),
                                               np.mean(total_relation_rmm)])))
@@ -184,8 +181,13 @@ class Runner:
         current_relation_linker = self.environment.relation_linker
         if not verbos:
             self.logger.setLevel(logging.INFO)
-        results = self.test_dataset(dataset.vocab, dataset.test_set, dataset.coded_test_corpus, args, use_elastic,
-                                    use_EARL, verbos)
+        try:
+            results = self.test_dataset(dataset.vocab, dataset.test_set, dataset.coded_test_corpus, args, use_elastic,
+                                        use_EARL, verbos)
+        except Exception as error:
+            print(error)
+            results=0,0
+
         self.environment.entity_linker = current_entity_linker
         self.environment.relation_linker = current_relation_linker
         return results
