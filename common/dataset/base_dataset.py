@@ -46,10 +46,16 @@ class Base_Dataset:
         return [], []
 
     def __load_candidate_relations(self):
+        vocab = set()
+        if not os.path.exists(self.config['rel2id']):
+            for qa_row in self.train_set + self.test_set:
+                for relation in qa_row.sparql.relations:
+                    vocab |= set(map(str.lower, relation.tokens))
+            return vocab
+
         with open(self.config['rel2id'], 'rb') as f_h:
             rel2id = pk.load(f_h, encoding='latin1')
 
-        vocab = set()
         for item_id, item in rel2id.items():
             words = [word.lower().replace('.', '') for word in item[2]]
             vocab |= set(words)
