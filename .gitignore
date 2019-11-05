@@ -1,5 +1,7 @@
 *.lprof
 *.chpt
+**/*.chk
+**/*.json
 **/*.png
 **/*.cach*
 data/**
