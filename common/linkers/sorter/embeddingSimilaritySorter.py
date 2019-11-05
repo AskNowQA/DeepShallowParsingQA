@@ -5,13 +5,14 @@ from common.utils import *
 
 
 class EmbeddingSimilaritySorter:
-    def __init__(self, word_vectorizer):
+    def __init__(self, word_vectorizer, threshold=0.4):
         self.word_vectorizer = word_vectorizer
         emb_shape = self.word_vectorizer.emb.shape
         self.emb = nn.Embedding(emb_shape[0], emb_shape[1], padding_idx=0, sparse=False)
         self.emb.weight.data.copy_(word_vectorizer.emb)
         if torch.cuda.is_available():
             self.emb.cuda()
+        self.threshold = threshold
 
     @profile
     def sort(self, surface, question, candidates):
@@ -33,11 +34,12 @@ class EmbeddingSimilaritySorter:
                 lens = lens.cuda()
             candidates_embeddings = self.emb(candidates_coded)
             candidates_embeddings_mean = torch.sum(candidates_embeddings, dim=1) / lens
-            candidates_similarity = torch.nn.functional.cosine_similarity(surface_embeddings, candidates_embeddings_mean)
+            candidates_similarity = torch.nn.functional.cosine_similarity(surface_embeddings,
+                                                                          candidates_embeddings_mean)
             if candidates_similarity.is_cuda:
                 candidates_similarity = candidates_similarity.cpu()
             candidates_similarity = candidates_similarity.data.numpy()
-            threshold = candidates_similarity > 0.4
+            threshold = candidates_similarity > self.threshold
             filtered_candidates = candidates[threshold]
             sorted_idx = np.argsort(candidates_similarity[threshold])[::-1]
             sorted_candidates = filtered_candidates[sorted_idx]
@@ -45,4 +47,3 @@ class EmbeddingSimilaritySorter:
             return output
         except:
             return []
-
