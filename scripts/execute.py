@@ -7,6 +7,8 @@ from config import config
 from scripts.config_args import parse_args
 from common.dataset.lc_quad import LC_QuAD
 from common.dataset.qald_7_ml import Qald_7_ml
+from common.dataset.qald_6_ml import Qald_6_ml
+from common.dataset.simple_dbpedia_qa import SimpleDBpediaQA
 from common.model.runner import Runner
 
 np.random.seed(6)
@@ -31,6 +33,13 @@ if __name__ == '__main__':
     elif args.dataset == 'qald_7_ml':
         dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
                             False, False)
+    elif args.dataset == 'qald_6_ml':
+        dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
+                        False, False)
+    elif args.dataset == 'simple':
+        dataset = SimpleDBpediaQA(config['SimpleDBpediaQA']['train'], config['SimpleDBpediaQA']['test'],
+                                  config['SimpleDBpediaQA']['vocab'],
+                                  False, False)
     runner = Runner(dataset, args)
 
     if args.mode == 'test':
@@ -38,6 +47,7 @@ if __name__ == '__main__':
     else:
         runner.train(dataset, args)
     logger.setLevel(logging.DEBUG)
-    runner.test(dataset, args, use_elastic=True)
+    args.k = 1
+    runner.test(dataset, args, use_elastic=True)  # use_EARL=True)
     finish = time.time()
     print('total runtime:', finish - start)
