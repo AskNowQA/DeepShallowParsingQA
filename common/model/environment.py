@@ -23,12 +23,12 @@ class Environment:
         self.lower_indicator = torch.LongTensor(lower_indicator)
         self.input_seq_size = len(self.input_seq)
         self.seq_counter = 0
-        self.state = torch.cat((torch.LongTensor([0, 0]), self.next_token(self.b)))
+        self.state = torch.cat((torch.LongTensor([0]), self.next_token(self.b, 0)))
         self.action_seq = []
         self.split_action_seq = []
         self.num_surface = 0
 
-    def next_token(self, b):
+    def next_token(self, b, action):
         idx = self.seq_counter % self.input_seq_size
         prev_tokens = torch.LongTensor([0] * b)
         prev_extras = torch.LongTensor([0] * b)
@@ -49,7 +49,8 @@ class Environment:
                 next_tokens[n_i] = self.input_seq[i + 1].reshape(-1)
                 next_extras[n_i] = self.lower_indicator[i + 1].reshape(-1)
             n_i += 1
-        output = torch.cat((prev_extras, current_extra, next_extras, prev_tokens, current_token, next_tokens))
+        output = torch.cat((torch.LongTensor([action]), prev_extras, current_extra, next_extras, prev_tokens,
+                            current_token, next_tokens))
         self.seq_counter += 1
         return output
 
@@ -57,15 +58,16 @@ class Environment:
         return self.seq_counter == self.input_seq_size + 1  # or sum(self.action_seq[-3:]) > 2
 
     @profile
-    def update_state(self, action, new_token):
-        return torch.cat((torch.LongTensor([self.num_surface, action]), new_token))
+    def update_state(self, new_token):
+        return torch.cat((torch.LongTensor([self.num_surface]), new_token))
 
-    def find_surfaces(self, normalized_question_with_numbers, split_action_seq):
+    @staticmethod
+    def find_surfaces(normalized_question_with_numbers, action_seq, split_action_seq):
         last_tag = 0
         surfaces = [[], []]
         surface = []
         splitted_relations = []
-        for idx, tag in enumerate(self.action_seq):
+        for idx, tag in enumerate(action_seq):
             tag = int(tag)
             if tag != 0:
                 if last_tag != tag or (last_tag == tag and split_action_seq[idx] == 0):
@@ -91,7 +93,7 @@ class Environment:
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
-        self.state = self.update_state(action, self.next_token(self.b))
+        self.state = self.update_state(self.next_token(self.b, action))
         self.action_seq.append(action)
         self.split_action_seq.append(split_action)
 
@@ -111,8 +113,9 @@ class Environment:
                 if train and self.cache.has(cache_key):
                     step_reward, mrr = self.cache.get(cache_key)
                 else:
-                    surfaces, splitted_relations = self.find_surfaces(qarow.normalized_question_with_numbers,
-                                                                      self.split_action_seq)
+                    surfaces, splitted_relations = Environment.find_surfaces(qarow.normalized_question_with_numbers,
+                                                                             self.action_seq,
+                                                                             self.split_action_seq)
 
                     extra_candidates = []
                     entity_results, entity_score, entity_mrr, found_target_entities = self.entity_linker.best_ranks(
@@ -129,8 +132,8 @@ class Environment:
                         for item in splitted_relations:
                             split_action_seq = list(self.split_action_seq)
                             split_action_seq[item] = 1
-                            surfaces_1, splitted_relations_1 = self.find_surfaces(
-                                qarow.normalized_question_with_numbers, split_action_seq)
+                            surfaces_1, splitted_relations_1 = Environment.find_surfaces(
+                                qarow.normalized_question_with_numbers, self.action_seq, split_action_seq)
                             relation_results_1, relation_score_1, relation_mrr_1, _ = self.relation_linker.best_ranks(
                                 list(surfaces_1[0]), [], qarow, k, train)
                             if relation_score_1 > relation_score:
@@ -298,8 +301,8 @@ class Environment:
         if is_done:
 
             if len(self.action_seq) == len(self.input_seq):
-                surfaces, splitted_relations = self.find_surfaces(normalized_question_with_numbers,
-                                                                  self.split_action_seq)
+                surfaces, splitted_relations = Environment.find_surfaces(normalized_question_with_numbers,
+                                                                         self.action_seq, self.split_action_seq)
 
                 if len(surfaces[0]) > 0 and max([len(item) for item in surfaces[0]]) > 2:
                     for idx, item in enumerate(surfaces[0]):
