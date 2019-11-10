@@ -7,6 +7,8 @@ from tqdm import tqdm
 from config import config
 from common.dataset.lc_quad import LC_QuAD
 from common.dataset.qald_7_ml import Qald_7_ml
+from common.dataset.qald_6_ml import Qald_6_ml
+from common.dataset.simple_dbpedia_qa import SimpleDBpediaQA
 from common.kb.dbpedia import DBpedia
 
 if __name__ == '__main__':
@@ -24,6 +26,15 @@ if __name__ == '__main__':
         file_name = config['qald_7_ml']['entity_one_hop']
         dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
                             False, False)
+    elif dataset_name == 'qald_6_ml':
+        file_name = config['qald_6_ml']['entity_one_hop']
+        dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
+                            False, False)
+    elif args.dataset == 'simple':
+        file_name = config['SimpleDBpediaQA']['entity_one_hop']
+        dataset = SimpleDBpediaQA(config['SimpleDBpediaQA']['train'], config['SimpleDBpediaQA']['test'],
+                                  config['SimpleDBpediaQA']['vocab'],
+                                  False, False)
     kb = DBpedia()
 
     if os.path.exists(file_name):
@@ -36,8 +47,8 @@ if __name__ == '__main__':
             if entity.raw_uri not in one_hop:
                 relations = []
                 relations = kb.one_hop_relations(entity.raw_uri)
-                relations = [[item, item[item.rindex('/') + 1:]] for item in relations]
                 if relations is not None:
+                    relations = [[item, item[item.rindex('/') + 1:]] for item in relations]
                     one_hop[entity.raw_uri] = relations
     with open(file_name, 'wb') as f:
         pk.dump(one_hop, f)
