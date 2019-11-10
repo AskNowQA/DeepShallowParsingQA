@@ -1,19 +1,24 @@
 from common.dataset.lc_quad import LC_QuAD
 from common.dataset.qald_7_ml import Qald_7_ml
+from common.dataset.qald_6_ml import Qald_6_ml
 from config import config
 import os
 import requests
 import ujson as json
 from tqdm import tqdm
 
-dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
-                  False, False)
-dataset = dataset.test_set
+# dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
+#                   False, False)
+# dataset = dataset.test_set
 
 
 # dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
 #                           False, False)
-# dataset = dataset.train_set
+# dataset = dataset.test_set
+dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
+                    False, False)
+dataset = dataset.test_set
+
 
 def fetch(cache_path, endpoint):
     cache = {}
@@ -101,8 +106,9 @@ def check(falcon_results, dtype='entity', k=1):
 
 
 if __name__ == '__main__':
-    cache_path = './falcon_bl.cache'
+    # cache_path = './falcon_bl.cache'
     # cache_path = './falcon_bl_qald7.cache'
+    cache_path = './falcon_bl_qald6.cache'
     # fetch(cache_path, 'https://labs.tib.eu/falcon/api?mode=long')
 
     cache = {}

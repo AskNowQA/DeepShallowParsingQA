@@ -1,19 +1,28 @@
 from common.linkers.candidate_generator.earlCG import EARLCG
+from common.dataset.qald_6_ml import Qald_6_ml
 from common.dataset.qald_7_ml import Qald_7_ml
 from common.dataset.lc_quad import LC_QuAD
 from config import config
+import json
 
-dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
-                  False, False)
-dataset = dataset.test_set
-earlCG = EARLCG(config['EARL']['endpoint'], './earl_bl.cach')
+# dataset_name = 'lcquad'
+# dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
+#                   False, False)
+# dataset = dataset.test_set
+# earlCG = EARLCG(config['EARL']['endpoint'], './earl_bl.cach')
 
 
+# dataset_name='qald_7_ml'
 # dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
 #                           False, False)
 # earlCG = EARLCG(config['EARL']['endpoint'], './earl_bl_qald7.cach')
 # dataset = dataset.test_set
 
+dataset_name = 'qald_6_ml'
+dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
+                    False, False)
+earlCG = EARLCG(config['EARL']['endpoint'], './earl_bl_qald6.cach')
+dataset = dataset.test_set
 
 
 def fetch():
@@ -78,12 +87,18 @@ def check(earl_results, dtype='entity', k=1):
         if k >= 0 and max_len > 0:
             mrr = sum(map(lambda x: 1.0 / (x + 1), rank)) / max_len
         mrrs.append(mrr)
-    print(sum(mrrs) / len(mrrs))
+    result = sum(mrrs) / len(mrrs)
+    print(result)
+    return result
 
 
 if __name__ == '__main__':
     # fetch()
-    # for i in range(1, 2):
-    check(earlCG.cache, 'entity', k=10)
-    for i in range(1, 2):
-        check(earlCG.cache, 'relation', k=i)
+    eval_results = {}
+    for k in range(0, 11):
+        file_name = '{}-{}'.format(dataset_name, k)
+        ent = check(earlCG.cache, 'entity', k=k)
+        rel = check(earlCG.cache, 'relation', k=k)
+        eval_results[file_name] = [ent, rel]
+    with open('earl-mrr-{}.json'.format(dataset_name), 'wt') as json_file:
+        json.dump(eval_results, json_file)

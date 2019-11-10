@@ -2,6 +2,7 @@ import requests
 import urllib
 import ujson as json
 import numpy as np
+from common.dataset.qald_6_ml import Qald_6_ml
 from common.dataset.qald_7_ml import Qald_7_ml
 from common.dataset.lc_quad import LC_QuAD
 from config import config
@@ -15,8 +16,11 @@ payload = {'lang': 'en',
 # cache_path = './tagme_lcquad.cache'
 # dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
 #                   False, False)
-cache_path = './tagme_q7.cache'
-dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
+# cache_path = './tagme_q7.cache'
+# dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
+#                     False, False)
+cache_path = './tagme_q6.cache'
+dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
                     False, False)
 
 
@@ -42,12 +46,12 @@ def extract_dbpedia_categories(json_data):
         return {item['spot']: get_dbpedia_url(item['title']) for item in json_data['annotations']}
 
 
-# data = {}
-# for qarow in dataset.test_set:
-#     data[qarow.question] = fetch(qarow.question)
-#
-# with open(cache_path, 'w') as f:
-#     json.dump(data, f)
+data = {}
+for qarow in dataset.test_set:
+    data[qarow.question] = fetch(qarow.question)
+
+with open(cache_path, 'w') as f:
+    json.dump(data, f)
 
 with open(cache_path, 'r') as f:
     data = json.load(f)

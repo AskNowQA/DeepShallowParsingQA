@@ -7,16 +7,20 @@ from common.linkers.sorter.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.candidate_generator.elasticCG import ElasticCG
 from common.linkers.candidate_generator.elastic import Elastic
 from common.linkers.relationOrderLinker import RelationOrderedLinker
+from common.dataset.qald_6_ml import Qald_6_ml
 from common.dataset.qald_7_ml import Qald_7_ml
 from common.dataset.lc_quad import LC_QuAD
 from config import config
 from flair.data import Sentence
 from flair.models import SequenceTagger
 
-dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
-                  False, False)
+# dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
+#                   False, False)
 # dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
 #                     False, False)
+dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
+                    False, False)
+
 
 chunk_tagger = SequenceTagger.load('chunk')
 ner_tagger = SequenceTagger.load('ner')
@@ -24,23 +28,23 @@ ner_tagger = SequenceTagger.load('ner')
 
 def get_phrases(sentence):
     sentence = Sentence(sentence)
-    # ner_tagger.predict(sentence)
-    # entities = []
-    # for item in sentence.get_spans('ner'):
-    #     entities.append(item.text.split())
-    # relations = []
-    # return [relations, entities]
-
-    chunk_tagger.predict(sentence)
-
+    ner_tagger.predict(sentence)
     entities = []
+    for item in sentence.get_spans('ner'):
+        entities.append(item.text.split())
     relations = []
-    for item in sentence.get_spans('np'):
-        if item.tag == 'NP':
-            entities.append(item.text.split())
-        elif item.tag == 'VP':
-            relations.append(item.text.split())
     return [relations, entities]
+
+    # chunk_tagger.predict(sentence)
+    #
+    # entities = []
+    # relations = []
+    # for item in sentence.get_spans('np'):
+    #     if item.tag == 'NP':
+    #         entities.append(item.text.split())
+    #     elif item.tag == 'VP':
+    #         relations.append(item.text.split())
+    # return [relations, entities]
 
 
 if __name__ == '__main__':
@@ -73,6 +77,12 @@ if __name__ == '__main__':
         total_relation_rmm.append(relation_mrr)
 
     print([np.mean(total_entity_rmm), np.mean(total_relation_rmm)])
+
+# Q6
+# FLAIR chunker
+# [0.27777777777777773, 0.0]
+# FLAIR ner
+# [0.5677083333333334, 0.0]
 
 # Q7
 # FLAIR chunker

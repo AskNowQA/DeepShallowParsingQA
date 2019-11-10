@@ -11,6 +11,7 @@ import similarity.ngram
 
 from config import config
 from common.dataset.lc_quad import LC_QuAD
+from common.dataset.qald_6_ml import Qald_6_ml
 from common.dataset.qald_7_ml import Qald_7_ml
 from common.linkers.candidate_generator.datasetCG import DatasetCG
 from common.linkers.sorter.stringSimilaritySorter import StringSimilaritySorter
@@ -80,21 +81,21 @@ def train(dataset, classifier, loss_function, optimizer, num_epoch=10):
 
 def eval(dataset, coded_dataset, classifier, entity_linker, relation_linker, loss_function, k=0):
     with torch.no_grad():
-        loss_val = []
+        # loss_val = []
         entity_mrrs = []
         relation_mrrs = []
-        for qarow in tqdm(dataset.train_set):
-            inputs = coded_dataset[qarow.question]
+        for idx, qarow in tqdm(enumerate(dataset.test_set)):
+            inputs = torch.LongTensor(dataset.coded_test_corpus[idx])
             classifier.init()
-            tag_scores = classifier(inputs[0])
+            tag_scores = classifier(inputs)
             action_seq = [torch.distributions.Categorical(scores).sample() for scores in tag_scores]
             print(qarow.question)
             surfaces, splitted_relations = Environment.find_surfaces(qarow.normalized_question_with_numbers, action_seq,
                                                                      [1] * len(action_seq))
             print(surfaces)
-            print(list(map(int, action_seq)), inputs[1])
-            loss = loss_function(tag_scores, inputs[1])
-            loss_val.append(loss.data)
+            # print(list(map(int, action_seq)), inputs[1])
+            # loss = loss_function(tag_scores, inputs[1])
+            # loss_val.append(loss.data)
 
             extra_candidates = []
             entity_results, entity_score, entity_mrr, found_target_entities = entity_linker.best_ranks(
@@ -106,7 +107,7 @@ def eval(dataset, coded_dataset, classifier, entity_linker, relation_linker, los
             entity_mrrs.append(entity_mrr)
             relation_mrrs.append(relation_mrr)
 
-        print(np.mean(loss_val))
+        # print(np.mean(loss_val))
         print(np.mean(entity_mrrs))
         print(np.mean(relation_mrrs))
 
@@ -114,9 +115,13 @@ def eval(dataset, coded_dataset, classifier, entity_linker, relation_linker, los
 if __name__ == '__main__':
     stop_words = set(stopwords.words('english') + ['whose']) - set(['where', 'when'])
     k = 10
-    ds_name = 'lcquad'
+    # ds_name = 'q6'
+    # dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
+    #                     False, False)
+    # ds_name = 'q7'
     # dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
     #                     False, False)
+    ds_name = 'lcquad'
     dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
                       False, False)
     word_vectorizer = dataset.word_vectorizer
@@ -218,3 +223,7 @@ if __name__ == '__main__':
 ## lstm train
 # 0.47689583333333335
 # 0.2860258928571428
+
+## q6 train
+# 0.4353233830845771
+# 0.2018407960199005

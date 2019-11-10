@@ -8,6 +8,7 @@ from common.linkers.sorter.stringSimilaritySorter import StringSimilaritySorter
 from common.linkers.candidate_generator.elasticCG import ElasticCG
 from common.linkers.candidate_generator.elastic import Elastic
 from common.linkers.relationOrderLinker import RelationOrderedLinker
+from common.dataset.qald_6_ml import Qald_6_ml
 from common.dataset.qald_7_ml import Qald_7_ml
 from common.dataset.lc_quad import LC_QuAD
 from config import config
@@ -132,8 +133,10 @@ def get_phrases(sentence):
 
 # dataset = LC_QuAD(config['lc_quad']['train'], config['lc_quad']['test'], config['lc_quad']['vocab'],
 #                   False, False)
-dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
-                          False, False)
+# dataset = Qald_7_ml(config['qald_7_ml']['train'], config['qald_7_ml']['test'], config['qald_7_ml']['vocab'],
+#                           False, False)
+dataset = Qald_6_ml(config['qald_6_ml']['train'], config['qald_6_ml']['test'], config['qald_6_ml']['vocab'],
+                    False, False)
 
 if __name__ == '__main__':
     elastic = Elastic(config['elastic']['server'])
@@ -159,7 +162,7 @@ if __name__ == '__main__':
             list(surfaces[1]), list(surfaces[0]), qarow, 1, False)
 
         extra_candidates = []
-        extra_candidates.extend(dataset.find_one_hop_relations(found_target_entities))
+        # extra_candidates.extend(dataset.find_one_hop_relations(found_target_entities))
 
         relation_results, relation_score, relation_mrr, _ = relation_linker.best_ranks(
             list(surfaces[0]), list(surfaces[1]), qarow, 1, False, extra_candidates)
@@ -180,3 +183,9 @@ if __name__ == '__main__':
 # with extra_candiadte
 #k=1    [0.21400000000000002, 0.0]
 #k=10   [0.22224675324675328, 0.006666666666666666]
+
+#QALD-6
+# with extra_candiadte
+#k=1    [0.22170138888888888, 0.0]
+# without extra_candiadte
+#k=1    [0.22170138888888888, 0.0026041666666666665]
