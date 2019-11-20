@@ -86,6 +86,7 @@ class Elastic:
         print("bulk indexing...")
         res = self.es.bulk(index=index_name, body=bulk_data, refresh=True, request_timeout=60)
         print("bulk indexing done")
+        print('error', res['errors'])
         return res
 
     def search_index(self, text, index, constraint=None, size=10):
@@ -102,15 +103,21 @@ class Elastic:
             total_hits = results['hits']['total']['value']
         if total_hits > 0:
             output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
-        else:
-            print(results)
+        # else:
+        #     print(text)
+        #     print(results)
         return output
 
     def search_term(self, text, index, size=10):
         output = []
         results = self.es.search(index=index, size=size, body={'query': {'term': {'key': text, }}})
 
-        if results['hits']['total'] > 0:
+        length = 0
+        if isinstance(results['hits']['total'], dict):
+            length = results['hits']['total']['value']
+        else:
+            length = results['hits']['total']
+        if length > 0:
             output = [[item['_source']['key'], item['_source']['label']] for item in results['hits']['hits']]
         else:
             print(results)
