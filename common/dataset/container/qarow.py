@@ -17,7 +17,7 @@ class QARow:
 
     @staticmethod
     def preprocess(line, entities, remove_entity_mention, remove_stop_words):
-        line = line.replace('?', ' ').replace('\'', ' ').replace('-', ' ').replace(',', ' ')
+        line = line.replace('?', ' ').replace('\'', ' ').replace('-', ' ').replace(',', ' ').replace('.', ' ').replace('>', ' ')
         line_split = line.split()
         line_lower = line.lower()
         entity_labels = ''.join([entity.label for entity in entities])
