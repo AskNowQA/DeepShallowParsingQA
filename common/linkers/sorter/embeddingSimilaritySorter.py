@@ -20,7 +20,7 @@ class EmbeddingSimilaritySorter:
             if len(candidates) == 0:  # or len(candidates[0]) < 3:
                 return []
             surface_embeddings = self.word_vectorizer.decode(surface)
-            surface_embeddings = torch.mean(surface_embeddings, dim=0).reshape(1, -1)
+            surface_embeddings = torch.sum(surface_embeddings, dim=0).reshape(1, -1)
 
             candidates = np.array(candidates, dtype=object)
             candidates_coded = candidates[:, 2]
@@ -45,5 +45,6 @@ class EmbeddingSimilaritySorter:
             sorted_candidates = filtered_candidates[sorted_idx]
             output = np.hstack((sorted_candidates, candidates_similarity[threshold][sorted_idx].reshape(-1, 1)))
             return output
-        except:
+        except Exception as error:
+            print(error)
             return []
