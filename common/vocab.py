@@ -27,6 +27,7 @@ class Vocab(object):
         try:
             return self.labelToIdx[key]
         except KeyError:
+            print(key)
             return default
 
     def getLabel(self, idx, default=None):
@@ -64,8 +65,7 @@ class Vocab(object):
         if bosWord is not None:
             vec += [self.getIndex(bosWord)]
 
-        unk = self.getIndex(unkWord)
-        vec += [self.getIndex(label, default=unk) for label in labels]
+        vec += [self.getIndex(label, default=unkWord) for label in labels]
 
         if eosWord is not None:
             vec += [self.getIndex(eosWord)]

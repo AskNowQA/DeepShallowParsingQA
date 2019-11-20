@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import os
 import pickle as pk
+import re
 
 
 class Base_Dataset:
@@ -16,19 +17,23 @@ class Base_Dataset:
         self.test_set, self.test_corpus = self.load_dataset(testset_path, remove_entity_mention, remove_stop_words)
 
         self.corpus = self.train_corpus + self.test_corpus
-        if not os.path.isfile(vocab_path):
-            self.__build_vocab(self.corpus, vocab_path)
-        self.vocab = Vocab(filename=vocab_path, data=['<ent>', '<num>'])
-        self.word_vectorizer = Glove(self.vocab, config['glove_path'], self.config['emb'])
+        # if not os.path.isfile(vocab_path):
+        #     self.__build_vocab(self.corpus, vocab_path)
+        if os.path.isfile(vocab_path):
+            self.vocab = Vocab(filename=vocab_path, data=['<ukn>', '<ent>', '<num>'])
+            self.unknown = self.vocab.getIndex('<ukn>')
+            self.word_vectorizer = Glove(self.vocab, config['glove_path'], self.config['emb'])
 
-        for qa_row in self.train_set + self.test_set:
-            for relation in qa_row.sparql.relations:
-                relation.coded = self.decode(relation)
-        # self.__update_relations_emb()
+            for qa_row in self.train_set + self.test_set:
+                for relation in qa_row.sparql.relations:
+                    relation.coded = self.decode(relation)
+            # self.__update_relations_emb()
 
-        self.coded_train_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.train_corpus]
-        self.coded_test_corpus = [[self.vocab.getIndex(word) for word in tokens] for tokens in self.test_corpus]
-        self.vocab_path = vocab_path
+            self.coded_train_corpus = [[self.vocab.getIndex(word, self.unknown) for word in tokens] for tokens in
+                                       self.train_corpus]
+            self.coded_test_corpus = [[self.vocab.getIndex(word, self.unknown) for word in tokens] for tokens in
+                                      self.test_corpus]
+            self.vocab_path = vocab_path
 
         self.one_hop = None
         if os.path.isfile(self.config['entity_one_hop']):
@@ -36,7 +41,7 @@ class Base_Dataset:
                 self.one_hop = pk.load(f)
 
     def decode(self, relation, max_length=3):
-        idxs = self.vocab.convertToIdx(map(str.lower, relation.tokens[:max_length]), '')
+        idxs = self.vocab.convertToIdx(map(str.lower, relation.tokens[:max_length]), self.unknown)
         length = len(idxs)
         if len(idxs) < max_length:
             idxs = idxs + [0] * (max_length - len(idxs))
@@ -47,11 +52,11 @@ class Base_Dataset:
 
     def __load_candidate_relations(self):
         vocab = set()
-        if not os.path.exists(self.config['rel2id']):
-            for qa_row in self.train_set + self.test_set:
-                for relation in qa_row.sparql.relations:
-                    vocab |= set(map(str.lower, relation.tokens))
-            return vocab
+        # if not os.path.exists(self.config['rel2id']):
+        #     for qa_row in self.train_set + self.test_set:
+        #         for relation in qa_row.sparql.relations:
+        #             vocab |= set(map(str.lower, relation.tokens))
+        #     return vocab
 
         with open(self.config['rel2id'], 'rb') as f_h:
             rel2id = pk.load(f_h, encoding='latin1')
@@ -59,6 +64,19 @@ class Base_Dataset:
         for item_id, item in rel2id.items():
             words = [word.lower().replace('.', '') for word in item[2]]
             vocab |= set(words)
+
+        if os.path.isfile(self.config['entity_one_hop']):
+            with open(self.config['entity_one_hop'], 'rb') as f:
+                one_hop = pk.load(f)
+
+            print(len(vocab))
+            for entity, uris in one_hop.items():
+                for idx in range(len(uris)):
+                    uri, label = uris[idx][:2]
+                    label = re.sub(r"([A-Z])", r" \1", label).replace('_', ' ').replace('.', ' ')
+                    words = list(map(str.lower, label.split(' ')))
+                    vocab |= set(words)
+            print(len(vocab))
 
         return vocab
 
