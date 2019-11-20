@@ -1,13 +1,8 @@
 from common.linkers.candidate_generator.elastic import Elastic
 from common.dataset.lc_quad import LC_QuAD
 from common.vocab import Vocab
-from common.dataset.container.uri import URI
 from config import config
-import pickle as pk
-import ujson as json
-from tqdm import tqdm
 import argparse
-import torch
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create ElasticSearch Index')
@@ -38,7 +33,7 @@ if __name__ == '__main__':
                                      'dtype': 'uri',
                                      'label': entity.label.replace('_', ' ')
                                      }
-                        op_dict = {"index": {"_index": args.index_name, "_type": 'resources'}}
+                        op_dict = {"index": {"_index": args.index_name}}#, "_type": 'resources'
                         bulk_data.append(op_dict)
                         bulk_data.append(data_dict)
 
@@ -51,7 +46,7 @@ if __name__ == '__main__':
                         data_dict = {'key': entity.raw_uri,
                                      'dtype': 'uri',
                                      'label': label}
-                        op_dict = {"index": {"_index": args.index_name, "_type": 'resources'}}
+                        op_dict = {"index": {"_index": args.index_name}}#, "_type": 'resources'
                         bulk_data.append(op_dict)
                         bulk_data.append(data_dict)
 
@@ -61,7 +56,7 @@ if __name__ == '__main__':
                         data_dict = {'key': entity.raw_uri,
                                      'dtype': 'uri',
                                      'label': label}
-                        op_dict = {"index": {"_index": args.index_name, "_type": 'resources'}}
+                        op_dict = {"index": {"_index": args.index_name}}#, "_type": 'resources'
                         bulk_data.append(op_dict)
                         bulk_data.append(data_dict)
 
@@ -85,22 +80,6 @@ if __name__ == '__main__':
             e.bulk_indexing(args.index_name, delete_index=False, index_config=index_config, bulk_data=bulk_data)
 
             vocab = Vocab(filename=config['lc_quad']['vocab'], data=['<ent>', '<num>'])
-            coded_labels = {}
-            max_length = 3
-            with open(config['dbpedia']['relations'], 'r', encoding='utf-8') as file_handler:
-                for line in tqdm(file_handler):
-                    json_object = json.loads(line)['_source']
-                    uri = json_object['uri']
-                    if 'http://dbpedia.org/' in uri:
-                        uri = URI(uri)
-                        if uri.raw_uri not in coded_labels:
-                            idxs = vocab.convertToIdx(map(str.lower, uri.tokens), '')[:max_length]
-                            length = len(idxs)
-                            if len(idxs) < max_length:
-                                idxs = idxs + [0] * (max_length - len(idxs))
-                            coded_labels[uri.raw_uri] = [torch.LongTensor(idxs), length]
 
-            with open(config['dbpedia']['relations'] + '.coded', 'wb') as file_handler:
-                pk.dump(coded_labels, file_handler)
 
     print(e.search_index(args.search, args.index_name, size=args.size))

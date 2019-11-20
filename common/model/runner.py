@@ -48,7 +48,7 @@ class Runner:
             candidate_generator=DatasetCG(dataset, relation=True),
             sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
                      # ],
-                     EmbeddingSimilaritySorter(self.word_vectorizer)],
+                     EmbeddingSimilaritySorter(self.word_vectorizer, threshold=0.25)],
             vocab=dataset.vocab)
 
         b = args.b
@@ -56,7 +56,7 @@ class Runner:
             policy_network = LSTMPolicy(vocab_size=dataset.vocab.size(),
                                         emb_size=self.word_vectorizer.word_size,
                                         input_size=(self.word_vectorizer.word_size + 1) * (2 * b + 1) + 2,
-                                        hidden_size=self.word_vectorizer.word_size,
+                                        hidden_size=int(self.word_vectorizer.word_size / 2),
                                         output_size=3,
                                         dropout_ratio=args.dropout,
                                         emb_idx=2 + 2 * b + 1,
@@ -102,6 +102,7 @@ class Runner:
             else:
                 checkpoint = torch.load(checkpoint_filename, map_location=lambda storage, loc: storage)
             self.agent.policy_network.load_state_dict(checkpoint['model'])
+            print('check point loaded')
 
     def save_checkpoint(self, checkpoint_filename=None):
         if checkpoint_filename is None:
@@ -186,13 +187,14 @@ class Runner:
                                         use_EARL, verbos)
         except Exception as error:
             print(error)
-            results=0,0
+            results = 0, 0
 
         self.environment.entity_linker = current_entity_linker
         self.environment.relation_linker = current_relation_linker
         return results
 
     def test_dataset(self, vocab, test_set, coded_test_corpus, args, use_elastic=True, use_EARL=False, verbos=True):
+        # use_EARL = True
         if use_EARL:
             earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
 
@@ -234,18 +236,28 @@ class Runner:
         self.agent.policy_network.train(False)
         return total_entity_mrr, total_relation_mrr
 
-    def link(self, question, e, k, connecting_relations=False, free_relation_match=False, connecting_relation=False):
+    def link(self, question, e, k, connecting_relations=False, free_relation_match=False, connecting_relation=False,
+             use_EARL=False):
+        earlCG = EARLCG(config['EARL']['endpoint'], config['EARL']['cache_path'])
         if self.environment.entity_linker is None:
-            self.environment.entity_linker = EntityOrderedLinker(
-                candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
-                sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True)],
-                vocab=self.vocab)
+            if use_EARL:
+                self.environment.entity_linker = EntityOrderedLinker(
+                    candidate_generator=earlCG, sorters=[], vocab=self.vocab)
+            else:
+                self.environment.entity_linker = EntityOrderedLinker(
+                    candidate_generator=ElasticCG(self.elastic, index_name='entity_whole_match_index'),
+                    sorters=[StringSimilaritySorter(similarity.ngram.NGram(2).distance, True, True)],
+                    vocab=self.vocab)
         if self.environment.relation_linker is None:
-            self.environment.relation_linker = RelationOrderedLinker(
-                candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
-                sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
-                         EmbeddingSimilaritySorter(self.word_vectorizer)],
-                vocab=self.vocab)
+            if use_EARL:
+                self.environment.relation_linker = RelationOrderedLinker(
+                    candidate_generator=earlCG, sorters=[], vocab=self.vocab)
+            else:
+                self.environment.relation_linker = RelationOrderedLinker(
+                    candidate_generator=ElasticCG(self.elastic, index_name='relation_whole_match_index'),
+                    sorters=[StringSimilaritySorter(jellyfish.levenshtein_distance, False, True),
+                             EmbeddingSimilaritySorter(self.word_vectorizer)],
+                    vocab=self.vocab)
 
         self.agent.policy_network.eval()
         normalized_question, normalized_question_with_numbers, lower_indicator = QARow.preprocess(question, [], False,
@@ -280,6 +292,7 @@ class Runner:
         rewards, action_log_probs, action_probs, actions, split_actions = [], [], [], [], []
         loss = 0
         running_reward = 0
+        # lower_indicator = [0] * len(lower_indicator)
         self.environment.init(input, lower_indicator)
         self.agent.init()
         state = self.environment.state

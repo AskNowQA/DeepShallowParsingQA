@@ -193,3 +193,32 @@ class Utils:
                         candidate_relations.extend(rels)
             Utils.relation_connecting_entities_cache.add(key, candidate_relations)
         return Utils.relation_connecting_entities_cache.get(key)
+
+    @staticmethod
+    def call_web_api(endpoint, raw_input=None, use_json=True, use_url_encode=False, parse_response_json=True,
+                     timeout=60):
+        proxy_handler = urllib.request.ProxyHandler({})
+        if 'sda-srv' in endpoint or '127.0.0.1' in endpoint:
+            opener = urllib.request.build_opener(proxy_handler)  # urllib2.build_opener(proxy_handler)
+        else:
+            opener = urllib.request.build_opener()
+        req = urllib.request.Request(endpoint)
+        if use_json:
+            input = json.dumps(raw_input)
+            input = input.encode('utf-8')
+            req.add_header('Content-Type', 'application/json')
+        elif use_url_encode:
+            input = urllib.parse.urlencode(raw_input)
+        else:
+            input = raw_input
+        try:
+            response = opener.open(req, data=input, timeout=timeout)
+            response = response.read()
+            if parse_response_json:
+                return json.loads(response)
+            else:
+                return response
+        except Exception as expt:
+            print(endpoint)
+            print(expt)
+            return None

@@ -121,6 +121,7 @@ class Environment:
                     entity_results, entity_score, entity_mrr, found_target_entities = self.entity_linker.best_ranks(
                         list(surfaces[1]), list(surfaces[0]), qarow, k, train)
 
+                    # comment for EARL
                     if not train:
                         extra_candidates.extend(self.dataset.find_one_hop_relations(found_target_entities))
 
@@ -292,7 +293,7 @@ class Environment:
         if action > 0:
             if len(self.action_seq) == 0 or self.action_seq[-1] == 0:
                 self.num_surface += 1
-        self.state = self.update_state(action, self.next_token(self.b))
+        self.state = self.update_state(self.next_token(self.b, action))
         self.action_seq.append(action)
         self.split_action_seq.append(split_action)
 
@@ -324,7 +325,9 @@ class Environment:
                     if candidate_relations is not None:
                         surfaces[0] = surfaces_relations
                 if candidate_relations is None:
+                    #Comment for EARL
                     extra_candidates_flatted = self.dataset.find_one_hop_relations(top_candidate_entities)
+                    # extra_candidates_flatted=[]
 
                     candidate_relations_1, _ = self.relation_linker.ranked_link(
                         list(surfaces[0]), list(surfaces[1]), question, k, extra_candidates_flatted)

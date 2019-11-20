@@ -18,7 +18,9 @@ class Glove(WordVectorizer):
             for word in dataset_vocab.labelToIdx.keys():
                 if vocab.getIndex(word):
                     self.emb[dataset_vocab.getIndex(word)] = vectors[vocab.getIndex(word)]
-            self.emb[dataset_vocab.getIndex('')] = torch.zeros([self.word_size])
+                else:
+                    self.emb[dataset_vocab.getIndex(word)] = torch.normal(mean=torch.zeros([self.word_size]))
+            self.emb[dataset_vocab.getIndex('<ukn>')] = torch.zeros([self.word_size])
             torch.save(self.emb, emb_path)
 
         if torch.cuda.is_available():
