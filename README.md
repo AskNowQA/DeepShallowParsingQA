@@ -25,9 +25,9 @@ If you would use the codebase, please cite our paper as well:
 
 ```
 @article{zafar2019mdp,
-  title={MDP-based Shallow Parsing in Distantly Supervised QA Systems},
+  title={Distantly Supervised Question Parsing},
   author={Zafar, Hamid and Tavakol, Maryam and Lehmann, Jens},
-  journal={arXiv preprint arXiv:1909.12566},
+  journal={arXiv preprint arXiv:1909.12566v2},
   year={2019}
 }
 ```
