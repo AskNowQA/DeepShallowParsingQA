@@ -34,3 +34,7 @@ If you would use the codebase, please cite our paper as well:
 
 ## Live Demo
 Coming soon! Stay tuned!
+
+
+## License
+This program is subject to the terms of the General Public License (GPL), Version 3.0.
