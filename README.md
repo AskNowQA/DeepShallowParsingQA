@@ -27,7 +27,7 @@ If you would use the codebase, please cite our paper as well:
 @article{zafar2019mdp,
   title={Distantly Supervised Question Parsing},
   author={Zafar, Hamid and Tavakol, Maryam and Lehmann, Jens},
-  journal={European Conference on Artificial Intelligence},
+  booktitle={European Conference on Artificial Intelligence},
   year={2020}
 }
 ```
