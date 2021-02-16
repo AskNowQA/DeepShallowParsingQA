@@ -37,4 +37,4 @@ Coming soon! Stay tuned!
 
 
 ## License
-This program is subject to the terms of the General Public License (GPL), Version 3.0.
+This program is subject to the terms of the Apache License Version 2.0.
