@@ -52,5 +52,5 @@ ujson==1.35
 Unidecode==1.0.22
 urllib3==1.23
 wcwidth==0.1.7
-Werkzeug==0.15.2
+Werkzeug==0.15.3
 WSGIserver==1.3
